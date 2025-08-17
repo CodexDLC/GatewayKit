@@ -1,0 +1,92 @@
+version: "3.9"
+
+volumes:
+  pg_data:
+  redis_data:
+  mongo_data:
+  rabbitmq_data:
+
+networks:
+  backend_network:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_service
+    networks: [backend_network]
+    environment:
+      POSTGRES_DB: game
+      POSTGRES_USER: game
+      POSTGRES_PASSWORD: gamepwd
+    volumes: [ "pg_data:/var/lib/postgresql/data" ]
+    ports: [ "5432:5432" ]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U game -d game"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+
+  mongo_db:
+    image: mongo:6.0
+    container_name: mongo_service
+    networks: [backend_network]
+    # базовый стенд без auth
+    volumes: [ "mongo_data:/data/db" ]
+    ports: [ "27017:27017" ]
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh --quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis_service
+    networks: [backend_network]
+    command: ["redis-server", "--appendonly", "yes"]  # без пароля в базовой сборке
+    volumes: [ "redis_data:/data" ]
+    ports: [ "6379:6379" ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq_service
+    networks: [backend_network]
+    # guest/guest и vhost / по умолчанию
+    volumes: [ "rabbitmq_data:/var/lib/rabbitmq" ]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity", "-q"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: always
+
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    container_name: gateway_service
+    networks: [backend_network]
+    command: >
+      gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 gateway.main:app
+    ports: [ "8000:8000" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      mongo_db: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    restart: always
