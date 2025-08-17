@@ -15,8 +15,6 @@ AUTH_VALIDATE_TOKEN_RPC    = {"name": Q.AUTH_VALIDATE_TOKEN_RPC,    "durable": T
 
 AUTH_COMMANDS_QUEUE        = {"name": Q.AUTH_COMMANDS,              "durable": True}
 COORDINATOR_COMMANDS_QUEUE = {"name": Q.COORDINATOR_COMMANDS,       "durable": True}
-SYSTEM_COMMANDS_QUEUE      = {"name": Q.SYSTEM_COMMANDS,            "durable": True}
-SYSTEM_CACHE_REQUESTS      = {"name": Q.SYSTEM_CACHE_REQUESTS,      "durable": True}
 
 GATEWAY_OUTBOUND_WS_QUEUE  = {"name": Q.GATEWAY_OUTBOUND_WS_MESSAGES, "durable": True}
 GATEWAY_INBOUND_EVENTS     = {"name": Q.GATEWAY_INBOUND_EVENTS,       "durable": True}
