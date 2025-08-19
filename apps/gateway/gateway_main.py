@@ -7,6 +7,6 @@ from apps.gateway.rest.routers_config import ROUTERS_CONFIG
 app = create_service_app(
     service_name="gateway",
     topology_declarator=declare_gateway_topology,
-    listener_factories=[], # Нет слушателей
+    listener_factories=[], # <-- Вот здесь пока пусто
     include_rest_routers=ROUTERS_CONFIG
 )

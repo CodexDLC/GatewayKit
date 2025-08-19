@@ -15,7 +15,7 @@ class AuthContainer:
     DI-контейнер для AuthService.
     Инициализирует шину сообщений и обработчики RPC.
     """
-    message_bus: IMessageBus
+    bus: IMessageBus  # <-- ИЗМЕНЕНО ЗДЕСЬ
     issue_token_handler: AuthIssueTokenRpcHandler
     validate_token_handler: AuthValidateTokenRpcHandler
 
@@ -23,7 +23,6 @@ class AuthContainer:
     async def create(cls) -> "AuthContainer":
         """Фабричный метод для асинхронной инициализации контейнера."""
         # --- Зависимости ---
-        # 🔥 ИСПРАВЛЕНИЕ: Используем переменную RABBITMQ_DSN из docker-compose
         amqp_url = os.getenv("RABBITMQ_DSN", "amqp://guest:guest@rabbitmq:5672/")
         jwt_secret = os.getenv("JWT_SECRET", "dev_secret_change_me")
         jwt_alg = os.getenv("JWT_ALG", "HS256")
@@ -36,12 +35,12 @@ class AuthContainer:
         validate_handler = AuthValidateTokenRpcHandler(jwt_secret=jwt_secret, jwt_alg=jwt_alg)
 
         return cls(
-            message_bus=bus,
+            bus=bus,  # <-- И ИЗМЕНЕНО ЗДЕСЬ
             issue_token_handler=issue_handler,
             validate_token_handler=validate_handler,
         )
 
     async def shutdown(self):
         """Корректно освобождает ресурсы."""
-        if self.message_bus:
-            await self.message_bus.close()
+        if self.bus: # <-- И ИЗМЕНЕНО ЗДЕСЬ
+            await self.bus.close() # <-- И ИЗМЕНЕНО ЗДЕСЬ

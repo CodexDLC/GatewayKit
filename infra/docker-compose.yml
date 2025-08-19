@@ -47,14 +47,13 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq_service
     networks: [backend_network]
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-    # Переменные RABBITMQ_DEFAULT_USER и RABBITMQ_DEFAULT_PASS удалены.
-    # Теперь единственный источник пользователей - это монтируемые файлы.
-    environment: {}
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}    # <-- Используем одну переменную для имени
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}    # <-- Используем одну переменную для пароля
+      RABBITMQ_DEFAULT_VHOST: core               # <-- Сразу создаем vhost 'core'
     volumes:
       - "rabbitmq_data:/var/lib/rabbitmq"
-      - "./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf"
-      - "./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json"
+      # Все монтирования файлов конфигурации удалены
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -75,7 +74,8 @@ services:
     environment:
       CONTAINER_ID: "gateway"
       LOG_LEVEL: ${LOG_LEVEL}
-      RABBITMQ_DSN: "amqp://${RABBITMQ_GATEWAY_USER}:${RABBITMQ_GATEWAY_PASS}@rabbitmq:5672/core"
+      RABBITMQ_DSN: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/core"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0"
     ports: ["8000:8000"]
     volumes:
       - "../logs/gateway:/app/logs"
@@ -98,10 +98,9 @@ services:
     environment:
       CONTAINER_ID: "auth_svc"
       LOG_LEVEL: ${LOG_LEVEL}
-      RABBITMQ_DSN: "amqp://${RABBITMQ_AUTH_USER}:${RABBITMQ_AUTH_PASS}@rabbitmq:5672/core"
+      RABBITMQ_DSN: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/core"
       DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
-      REDIS_URL: "redis://${REDIS_HOST}:${REDIS_PORT}/0"
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0"
       DB_SCHEMA: "auth"
       JWT_SECRET: ${JWT_SECRET}
     ports: ["8001:8001"]
