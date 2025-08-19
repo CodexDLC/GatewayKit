@@ -9,10 +9,9 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-# --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-# Используем относительный импорт, так как оба файла находятся в libs/infra
 from .central_redis_client import CentralRedisClient
 from .db import engine, AsyncSessionLocal
+from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
 
 
 log = logging.getLogger(__name__)
@@ -26,15 +25,21 @@ class Container:
     session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal
 
     async def init(self) -> "Container":
-        # RabbitMQ
-        amqp_url = os.getenv("AMQP_URL", "amqp://guest:guest@rabbitmq:5672/")
-        # Импортируем здесь, чтобы избежать циклических зависимостей
-        from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
+        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+        # Читаем правильную переменную RABBITMQ_DSN из окружения.
+        # Убираем default, чтобы сервис падал при отсутствии переменной.
+        amqp_url = os.getenv("RABBITMQ_DSN")
+        if not amqp_url:
+            raise ValueError("RABBITMQ_DSN environment variable not set.")
+        # -------------------------
+
         self.bus = RabbitMQMessageBus(amqp_url)
         await self.bus.connect()
 
         # Redis
-        redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            raise ValueError("REDIS_URL environment variable not set.")
         redis_pwd = os.getenv("REDIS_PASSWORD")
         self.redis = CentralRedisClient(redis_url=redis_url, password=redis_pwd)
         await self.redis.connect()

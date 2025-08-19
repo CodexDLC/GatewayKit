@@ -7,14 +7,12 @@
   "users": [
     {
       "name": "gateway_user",
-      "password_hash": "...",
-      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "password": "Ghbrjk141559",
       "tags": ""
     },
     {
       "name": "auth_user",
-      "password_hash": "...",
-      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "password": "Ghbrjk141559",
       "tags": ""
     }
   ],

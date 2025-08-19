@@ -6,7 +6,7 @@ from typing import Type, Callable, List, Optional, Awaitable
 from fastapi import FastAPI
 from pydantic_settings import BaseSettings
 
-from libs.infra.di import Container  # Используем общий DI-контейнер
+from libs.infra.di import Container
 from libs.messaging.i_message_bus import IMessageBus
 from libs.utils.logging_setup import app_logger as log
 from libs.app.health import create_readiness_router, liveness_check
@@ -36,17 +36,14 @@ async def service_lifespan(
     log.info("Запуск сервиса...")
     listeners = []
     try:
-        # 1. Инициализация DI контейнера
         container = await container_factory()
         app.state.container = container
         bus = container.bus
         log.info("DI-контейнер инициализирован.")
 
-        # 2. Объявление топологии RabbitMQ
         await topology_declarator(bus)
         log.info("Топология RabbitMQ объявлена.")
 
-        # 3. Создание и запуск слушателей
         if listener_factories:
             listener_tasks = [factory(bus, container) for factory in listener_factories]
             listeners = await asyncio.gather(*listener_tasks)
@@ -63,16 +60,17 @@ async def service_lifespan(
         raise
     finally:
         log.info("Остановка сервиса...")
-        # Остановка слушателей
         for l in reversed(listeners):
             try:
                 await l.stop()
             except Exception:
                 log.exception(f"Ошибка при остановке слушателя {l.name}")
 
-        # Закрытие соединений в DI
-        if 'container' in app.state:
+        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+        # Правильная проверка наличия атрибута
+        if hasattr(app.state, 'container'):
             await app.state.container.shutdown()
+        # -------------------------
         log.info("Сервис остановлен.")
 
 
@@ -97,17 +95,14 @@ def create_service_app(
 
     app = FastAPI(title=service_name, lifespan=_lifespan)
 
-    # Health-чеки
     async def rmq_check():
         is_ready = await app.state.container.bus.is_connected()
         return "rabbitmq", is_ready
 
-    # Добавляем readiness-чеки для всех зависимостей из контейнера
-    readiness_checks = [rmq_check]  # Можно добавить redis, pg и т.д.
+    readiness_checks = [rmq_check]
 
     app.include_router(create_readiness_router(readiness_checks))
 
-    # REST роутеры
     if include_rest_routers:
         for router_config in include_rest_routers:
             app.include_router(

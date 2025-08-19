@@ -6,12 +6,13 @@ import os
 import uuid
 import time
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
+
 from libs.utils.logging_setup import app_logger as logger
 
-
 try:
-    import orjson  # быстрее json
-    _dumps = lambda o: orjson.dumps(o)  # returns bytes
+    import orjson
+    _dumps = lambda o: orjson.dumps(o)
 except Exception:
     _dumps = lambda o: json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
@@ -29,7 +30,7 @@ _EX_TYPES = {
 class RabbitMQMessageBus(IMessageBus):
     """
     JSON-шина на RabbitMQ (aio-pika, publisher confirms).
-    Конверт не формирует: принимает уже готовый dict (например, Pydantic model .model_dump()).
+    Конверт не формирует: принимает уже готовый dict.
     """
 
     def __init__(self, dsn: str, *, publisher_confirms: bool = True, reconnect_backoff: float = 1.0) -> None:
@@ -40,32 +41,45 @@ class RabbitMQMessageBus(IMessageBus):
         self._chan: Optional[aio_pika.RobustChannel] = None
         self._closing = False
 
-    async def is_connected(self) -> bool:
-        """Проверяет, что соединение установлено и канал открыт."""
-        return self._conn is not None and not self._conn.is_closed and \
-               self._chan is not None and not self._chan.is_closed
-
     async def connect(self) -> None:
         """Подключение к RabbitMQ с ретраями и общим таймаутом."""
         self._closing = False
-        backoff = getattr(self, "_backoff", 1.0)  # сек, если не задан в __init__
-        timeout = float(os.getenv("RABBITMQ_CONNECT_TIMEOUT", "15"))  # 0 или <0 = бесконечно
+        backoff = getattr(self, "_backoff", 1.0)
+        timeout = float(os.getenv("RABBITMQ_CONNECT_TIMEOUT", "15"))
         deadline = (time.monotonic() + timeout) if timeout > 0 else None
         attempt = 0
+
+        # --- НОВЫЙ БЛОК ЛОГИРОВАНИЯ ---
+        try:
+            parsed_dsn = urlparse(self._dsn)
+            log_info = (
+                f"RMQ connect -> host={parsed_dsn.hostname}, "
+                f"vhost={parsed_dsn.path or '/'!r}, "
+                f"user={parsed_dsn.username!r}"
+            )
+        except Exception:
+            log_info = f"RMQ connect -> dsn={self._dsn}"
+        # -----------------------------
 
         while True:
             attempt += 1
             try:
-                logger.info("bus: connecting to RabbitMQ (attempt %s) dsn=%s", attempt, self._dsn)
+                logger.info("%s (attempt %s)", log_info, attempt)
                 self._conn = await aio_pika.connect_robust(self._dsn)
                 self._chan = await self._conn.channel(publisher_confirms=getattr(self, "_pub_confirms", True))
-                logger.info("bus: connected to RabbitMQ")
+                logger.success("bus: connected to RabbitMQ successfully") # Используем success для наглядности
                 return
             except Exception as e:
                 if deadline is not None and time.monotonic() >= deadline:
                     logger.error("bus: connect timeout after %s attempts: %s", attempt, e)
                     raise
                 await asyncio.sleep(backoff)
+
+    # ... (остальная часть файла без изменений)
+    async def is_connected(self) -> bool:
+        """Проверяет, что соединение установлено и канал открыт."""
+        return self._conn is not None and not self._conn.is_closed and \
+               self._chan is not None and not self._chan.is_closed
 
     async def close(self) -> None:
         self._closing = True
@@ -144,14 +158,10 @@ class RabbitMQMessageBus(IMessageBus):
 
         async def _on_message(msg: AbstractIncomingMessage) -> None:
             try:
-                if msg.content_type != "application/json":
-                    # допускаем, всё равно пытаемся распарсить
-                    pass
                 body = msg.body
                 try:
-                    data: Dict[str, Any] = json.loads(body)  # orjson.loads тоже ок, но json гарантирован
+                    data: Dict[str, Any] = json.loads(body)
                 except Exception:
-                    # невалидный JSON — отвергаем без ре-queue
                     await msg.reject(requeue=False)
                     return
 
@@ -168,13 +178,11 @@ class RabbitMQMessageBus(IMessageBus):
                 await handler(data, meta)
                 await msg.ack()
             except Exception:
-                # ошибка обработчика — DLQ через policy (requeue=False)
                 await msg.reject(requeue=False)
 
         await queue.consume(_on_message, no_ack=False)
 
     async def publish_rpc_response(self, reply_to: str, response: Dict[str, Any], *, correlation_id: Optional[str]) -> None:
-        # Простая отправка в указанную очередь (обычно анонимная reply-очередь RPC-клиента)
         ch = await self._ensure()
         q = await ch.get_queue(reply_to, ensure=True)
         body = _dumps(response)
@@ -195,10 +203,7 @@ class RabbitMQMessageBus(IMessageBus):
             correlation_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         ch = await self._ensure()
-
-        # 1) reply-очередь (эксклюзивная, автоудаляемая)
         callback_q = await ch.declare_queue(name="", exclusive=True, auto_delete=True, durable=False)
-
         corr_id = correlation_id or str(uuid.uuid4())
         fut = asyncio.get_running_loop().create_future()
 
@@ -215,7 +220,6 @@ class RabbitMQMessageBus(IMessageBus):
 
         consume_tag = await callback_q.consume(_on_reply, no_ack=False)
         try:
-            # 2) публикуем в целевую ОЧЕРЕДЬ
             target_q = await ch.get_queue(queue_name, ensure=True)
             message = aio_pika.Message(
                 body=json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
@@ -225,7 +229,6 @@ class RabbitMQMessageBus(IMessageBus):
                 reply_to=callback_q.name,
             )
             await target_q.publish(message)
-            # 3) ждём ответ
             try:
                 return await asyncio.wait_for(fut, timeout=timeout)
             except asyncio.TimeoutError:

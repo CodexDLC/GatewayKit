@@ -50,11 +50,11 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_ADMIN_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_ADMIN_PASS}
-      # Загрузка кастомных определений при старте
-      RABBITMQ_DEFINITIONS_DIR: /etc/rabbitmq/
+      # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+      # Указываем RabbitMQ загрузить конкретный файл с определениями
+      RABBITMQ_LOAD_DEFINITIONS: /etc/rabbitmq/definitions.json
     volumes:
       - "rabbitmq_data:/var/lib/rabbitmq"
-      # Монтируем наш файл с vhost и пользователями
       - "./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json"
     ports:
       - "5672:5672"
@@ -99,9 +99,7 @@ services:
     environment:
       CONTAINER_ID: "auth_svc"
       LOG_LEVEL: ${LOG_LEVEL}
-      # DSN для сервисных пользователей и vhost /core
       RABBITMQ_DSN: "amqp://${RABBITMQ_AUTH_USER}:${RABBITMQ_AUTH_PASS}@rabbitmq:5672/core"
-      # Единый DSN для БД
       DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
       REDIS_URL: "redis://${REDIS_HOST}:${REDIS_PORT}/0"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
