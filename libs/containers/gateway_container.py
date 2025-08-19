@@ -17,7 +17,8 @@ class GatewayContainer:
     @classmethod
     async def create(cls) -> "GatewayContainer":
         """Фабричный метод для асинхронной инициализации контейнера."""
-        amqp_url = os.getenv("AMQP_URL", "amqp://guest:guest@rabbitmq:5672/")
+        # 🔥 ИСПРАВЛЕНИЕ: Используем переменную RABBITMQ_DSN из docker-compose
+        amqp_url = os.getenv("RABBITMQ_DSN", "amqp://guest:guest@rabbitmq:5672/")
 
         bus = RabbitMQMessageBus(amqp_url)
         await bus.connect()

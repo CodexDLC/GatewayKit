@@ -29,11 +29,20 @@ DB_ECHO = os.getenv("DB_ECHO", "0") in {"1", "true", "True", "yes", "YES"}
 # -----------------------------------------------------------------------------
 # Engine / Session
 # -----------------------------------------------------------------------------
+
+# --- НОВЫЙ БЛОК ---
+# Определяем search_path на основе переменной окружения
+# Это позволит сервисам работать с нужной схемой по умолчанию
+DB_SCHEMA = os.getenv("DB_SCHEMA", "public")
+connect_args = {"server_settings": {"search_path": f"{DB_SCHEMA},public"}}
+# -----------------
+
 engine: AsyncEngine = create_async_engine(
     DATABASE_URL,
     echo=DB_ECHO,
     poolclass=NullPool,  # в контейнерах обычно без пула; при необходимости — заменить на пул
     future=True,
+    connect_args=connect_args, # <-- ДОБАВЛЕНО
 )
 
 # фабрика сессий (используйте её в DI или напрямую через get_db_session)
@@ -109,3 +118,5 @@ async def get_raw_connection():
         finally:
             # raw закрывается вместе с conn при выходе из контекста
             pass
+
+

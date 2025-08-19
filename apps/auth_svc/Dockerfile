@@ -34,4 +34,4 @@ EXPOSE 8001
 USER 1001
 
 # Auth-сервис
-CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","-w","1","-b","0.0.0.0:8001","apps.auth_svc.main:app"]
+CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","-w","1","-b","0.0.0.0:8001","apps.auth_svc.auth_svc_main:app"]

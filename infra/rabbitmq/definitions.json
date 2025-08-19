@@ -1,0 +1,37 @@
+{
+  "vhosts": [
+    {
+      "name": "/core"
+    }
+  ],
+  "users": [
+    {
+      "name": "gateway_user",
+      "password_hash": "...",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ""
+    },
+    {
+      "name": "auth_user",
+      "password_hash": "...",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ""
+    }
+  ],
+  "permissions": [
+    {
+      "user": "gateway_user",
+      "vhost": "/core",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "auth_user",
+      "vhost": "/core",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ]
+}

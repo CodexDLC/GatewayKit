@@ -11,12 +11,17 @@ class IMessageBus(ABC):
     """Абстракция над шиной сообщений (JSON)."""
 
     @abstractmethod
+    async def is_connected(self) -> bool: ... # <-- ДОБАВЛЕНО
+
+    @abstractmethod
     async def connect(self) -> None: ...
+
     @abstractmethod
     async def close(self) -> None: ...
 
     @abstractmethod
     async def declare_exchange(self, name: str, type_: str = "direct", durable: bool = True) -> None: ...
+
     @abstractmethod
     async def declare_queue(
         self,

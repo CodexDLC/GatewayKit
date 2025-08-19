@@ -40,6 +40,11 @@ class RabbitMQMessageBus(IMessageBus):
         self._chan: Optional[aio_pika.RobustChannel] = None
         self._closing = False
 
+    async def is_connected(self) -> bool:
+        """Проверяет, что соединение установлено и канал открыт."""
+        return self._conn is not None and not self._conn.is_closed and \
+               self._chan is not None and not self._chan.is_closed
+
     async def connect(self) -> None:
         """Подключение к RabbitMQ с ретраями и общим таймаутом."""
         self._closing = False

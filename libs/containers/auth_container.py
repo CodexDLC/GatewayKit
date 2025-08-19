@@ -23,7 +23,8 @@ class AuthContainer:
     async def create(cls) -> "AuthContainer":
         """Фабричный метод для асинхронной инициализации контейнера."""
         # --- Зависимости ---
-        amqp_url = os.getenv("AMQP_URL", "amqp://guest:guest@rabbitmq:5672/")
+        # 🔥 ИСПРАВЛЕНИЕ: Используем переменную RABBITMQ_DSN из docker-compose
+        amqp_url = os.getenv("RABBITMQ_DSN", "amqp://guest:guest@rabbitmq:5672/")
         jwt_secret = os.getenv("JWT_SECRET", "dev_secret_change_me")
         jwt_alg = os.getenv("JWT_ALG", "HS256")
 

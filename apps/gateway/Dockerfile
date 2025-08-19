@@ -49,4 +49,4 @@ EXPOSE 8000
 USER 1001
 
 # Запускаем приложение
-CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","-w","1","-b","0.0.0.0:8000","apps.gateway.main:app"]
+CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","-w","1","-b","0.0.0.0:8000","apps.gateway.gateway_main:app"]
