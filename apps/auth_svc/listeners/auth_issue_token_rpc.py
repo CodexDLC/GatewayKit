@@ -4,8 +4,9 @@ from typing import Any, Dict, Optional
 
 from pydantic import ValidationError
 
+from libs.messaging.base_listener import BaseMicroserviceListener
 from libs.messaging.i_message_bus import IMessageBus
-from ....libs.messaging.base_listener import BaseMicroserviceListener
+
 from apps.auth_svc.handlers.auth_issue_token_rpc_handler import (
     AuthIssueTokenRpcHandler,
     IssueTokenRequest,

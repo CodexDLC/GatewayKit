@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "game_server_libs"
+version = "0.1.0"
+description = "Shared libraries for the game server backend."
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["libs*"]

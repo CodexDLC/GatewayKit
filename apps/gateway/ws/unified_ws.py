@@ -1,174 +1,160 @@
-# game_server/app_gateway/ws_routers/unified_ws.py
+# apps/gateway/ws/unified_ws.py
+from __future__ import annotations
 
 import asyncio
 import json
-from typing import Optional, Dict, Any
 import uuid
+from types import SimpleNamespace
+from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status, Depends
 from starlette.websockets import WebSocketState
 
+from apps.gateway.gateway.client_connection_manager import ClientConnectionManager
+from libs.messaging.i_message_bus import IMessageBus
+from libs.messaging.rabbitmq_names import Queues, Exchanges, RoutingKeys
+from libs.utils.logging_setup import app_logger as logger
 
-from game_server.config.logging.logging_setup import app_logger as logger
-from game_server.Logic.InfrastructureLogic.messaging.i_message_bus import IMessageBus
-from game_server.app_gateway.gateway.client_connection_manager import ClientConnectionManager
+# --- DI зависимости (settings опционально) ---
+from apps.gateway.dependencies import get_message_bus, get_client_connection_manager
+try:
+    from apps.gateway.dependencies import get_settings
+except Exception:
+    get_settings = None  # settings может отсутствовать на этом этапе
 
-from game_server.app_gateway.rest_api_dependencies import get_client_connection_manager_dependency, get_message_bus_dependency
-from game_server.config.settings.rabbitmq.rabbitmq_names import Exchanges, RoutingKeys, Queues
-from game_server.contracts.shared_models.base_responses import ResponseStatus
-from game_server.contracts.shared_models.websocket_base_models import WebSocketMessage, WebSocketResponsePayload
+# --- Новые DTO ---
+from libs.domain.dto.ws import (
+    ClientWSFrame, WSCommandFrame, WSPongFrame, WSHelloFrame, WSErrorFrame
+)
+from libs.domain.dto.backend import BackendInboundCommandEnvelope, RoutingInfo, AuthInfo, OriginInfo
 
-logger.info("--- 🚀 Загружен унифицированный WebSocket-роутер (unified_ws.py) ---")
 
 router = APIRouter(tags=["Unified WebSocket"])
 
-# Константы для типов клиентов
-CLIENT_TYPE_PLAYER = "PLAYER"
-CLIENT_TYPE_DISCORD_BOT = "DISCORD_BOT"
-CLIENT_TYPE_ADMIN_PANEL = "ADMIN_PANEL"
+def _defaults():
+    # TODO: заменить на GatewaySettings из .env, когда добавите get_settings
+    return SimpleNamespace(
+        WS_HEARTBEAT_SEC=30,
+        WS_AUTH_TIMEOUT_SEC=5,
+        WS_MAX_MSG_BYTES=65536,
+    )
 
-# ЕДИНСТВЕННЫЙ УНИФИЦИРОВАННЫЙ WebSocket-эндпоинт
 @router.websocket("/v1/connect")
 async def unified_websocket_endpoint(
     websocket: WebSocket,
-    client_conn_manager: ClientConnectionManager = Depends(get_client_connection_manager_dependency),
-    message_bus: IMessageBus = Depends(get_message_bus_dependency),
-    # 🔥 УДАЛЕНО: token и client_type из Query. Ожидаем их в JSON-сообщении
-    # client_type: str = Query(..., alias="clientType"),
-    # token: str = Query(None),
+    client_conn_manager: ClientConnectionManager = Depends(get_client_connection_manager),
+    message_bus: IMessageBus = Depends(get_message_bus),
+    settings: Optional[object] = Depends(get_settings) if get_settings else None,
 ):
-    client_id: Optional[str] = None
-    client_type: Optional[str] = None
-    client_address = f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "N/A"
-    
+    cfg = settings or _defaults()
     await websocket.accept()
-    logger.info(f"🔌 Входящее соединение от {client_address} принято. Ожидание аутентификации...")
+    client_addr = f"{getattr(websocket.client, 'host', '0.0.0.0')}:{getattr(websocket.client, 'port', '0')}"
+    account_id: Optional[int] = None
+    conn_key: Optional[str] = None
+
+    logger.info(f"🔌 WS: входящее соединение от {client_addr}. Ожидаем auth.validate_token ...")
 
     try:
-        # 🔥 ИСПРАВЛЕНО: Читаем JSON-сообщение для аутентификации
-        auth_payload_str = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
-        auth_payload = json.loads(auth_payload_str)
+        # --- 1) Первое сообщение = auth.validate_token ---
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=cfg.WS_AUTH_TIMEOUT_SEC)
+        try:
+            data = json.loads(raw)
+        except Exception:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid JSON")
+            return
 
-        # Извлекаем данные из JSON-сообщения
-        command_from_ws_auth = auth_payload.get("command") # 🔥 НОВОЕ: Ожидаем command
-        token_to_validate = auth_payload.get("token")
-        requested_client_type = auth_payload.get("client_type")
-        bot_name_from_payload = auth_payload.get("bot_name") # Если нужно передать bot_name в RPC
+        try:
+            frame = ClientWSFrame.model_validate(data)
+        except Exception as e:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid frame schema")
+            return
 
-        if not command_from_ws_auth or not token_to_validate or not requested_client_type: # Проверка на наличие command
-            logger.warning(f"❌ Отсутствуют необходимые поля в аутентификационных данных от {client_address}.")
-            raise ValueError("Missing 'command', 'token' or 'client_type' in authentication data.")
+        if not (isinstance(frame, WSCommandFrame) and frame.domain == "auth" and frame.command == "validate_token"):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="First message must be auth.validate_token")
+            return
 
-        rpc_request_data = {
-            "command": command_from_ws_auth, # 🔥 ИСПРАВЛЕНО: Берем command из JSON-сообщения
-            "token": token_to_validate,
-            "client_type": requested_client_type,
-            # Дополнительные поля для RPC, если нужны (например, bot_name)
-            "bot_name": bot_name_from_payload # Передаем bot_name в RPC
-        }
-        
-        logger.info(f"Отправка RPC-запроса на валидацию токена для типа клиента: {requested_client_type}...")
-        
-        validation_result = await message_bus.call_rpc(
-            queue_name=Queues.AUTH_VALIDATE_TOKEN_RPC,
-            payload=rpc_request_data
-        )
-        logger.debug(f"DEBUG_GATEWAY_RPC_RESPONSE: Получен ответ от RPC-валидации: {validation_result}")
+        token = (frame.payload or {}).get("token")
+        if not token:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token required")
+            return
 
-        # Получаем payload из ответа RPC
-        rpc_payload = validation_result.get("payload")
-
-        # Проверяем, что payload существует и содержит is_valid
-        if rpc_payload and rpc_payload.get("is_valid"):
-            client_id = rpc_payload.get("client_id")
-            client_type = rpc_payload.get("client_type")
-
-            if not client_id or not client_type:
-                error_message = "Неполные данные аутентификации от RPC-сервиса."
-                logger.warning(f"❌ Аутентификация клиента {client_address} не удалась: {error_message}")
-                raise ValueError(f"Authentication failed: {error_message}")
-
-            auth_confirm_correlation_id = uuid.uuid4()
-
-            auth_confirm_payload = WebSocketResponsePayload(
-                request_id=auth_confirm_correlation_id,
-                status=ResponseStatus.SUCCESS,
-                message="Authentication successful.",
-                data={"client_id": client_id, "client_type": client_type}
+        # RPC в auth для валидации токена
+        try:
+            rpc_resp = await message_bus.call_rpc(
+                queue_name=Queues.AUTH_VALIDATE_TOKEN_RPC,
+                payload={"token": token},
+                timeout=cfg.WS_AUTH_TIMEOUT_SEC,
             )
-            auth_confirm_message = WebSocketMessage(
-                type="AUTH_CONFIRM",
-                correlation_id=auth_confirm_correlation_id,
-                payload=auth_confirm_payload
-            )
-            await websocket.send_text(auth_confirm_message.model_dump_json())
-            logger.info(f"Отправлено подтверждение аутентификации клиенту {client_id}.")
+        except asyncio.TimeoutError:
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Auth service timeout")
+            return
 
-        else:
-            # Если payload невалиден или is_valid не True
-            error_message = rpc_payload.get("error") if rpc_payload else None
-            if not error_message:
-                error_message = "Неизвестная ошибка валидации токена."
-            logger.warning(f"❌ Аутентификация клиента {client_address} не удалась: {error_message}")
-            raise ValueError(f"Authentication failed: {error_message}")
+        if not (rpc_resp and rpc_resp.get("valid", False)):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+            return
 
-        if not client_id:
-            raise ValueError("В аутентификационных данных отсутствует 'client_id' после обработки.")
-        
-        # --- ШАГ 2: РЕГИСТРАЦИЯ СОЕДИНЕНИЯ ---
-        await client_conn_manager.connect(websocket, client_id, client_type)
+        # Берём account_id (INTEGER как ты просил)
+        try:
+            account_id = int(rpc_resp.get("account_id"))
+        except Exception:
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Auth response missing account_id")
+            return
 
-        # --- ШАГ 3: ОСНОВНОЙ ЦИКЛ ОБРАБОТКИ КОМАНД ---
+        # Регистрируем соединение (ключи менеджера строковые)
+        conn_key = str(account_id)
+        await client_conn_manager.connect(websocket, client_id=conn_key, client_type="PLAYER")
+
+        # Отправляем HELLO
+        hello = WSHelloFrame(connection_id=conn_key, heartbeat_sec=cfg.WS_HEARTBEAT_SEC)
+        await websocket.send_text(hello.model_dump_json())
+
+        logger.info(f"✅ WS авторизован: account_id={account_id}")
+
+        # --- 2) Основной цикл приёма кадров ---
         while True:
-            message_text = await websocket.receive_text()
-            raw_message_dict = json.loads(message_text)
+            msg = await websocket.receive_text()
 
-            websocket_msg = WebSocketMessage.model_validate(raw_message_dict)
+            # Лёгкий ping без полной схемы
+            if msg.strip().startswith('{"type":"ping"'):
+                pong = WSPongFrame()
+                await websocket.send_text(pong.model_dump_json())
+                continue
 
+            data = json.loads(msg)
+            frame = ClientWSFrame.model_validate(data)
 
-            if websocket_msg.type == "COMMAND":
-                # 1. Извлекаем "обертку" команды
-                command_wrapper = websocket_msg.payload                                
-                logger.debug(f"DEBUG: Содержимое 'command_wrapper': {command_wrapper}")    
-                            
-                # 2. Извлекаем саму "чистую" команду
-                actual_command_dto = command_wrapper['payload']
-                actual_command_dto['client_id'] = client_id
-                # ▼▼▼ ДОБАВИТЬ ЭТУ СТРОКУ ▼▼▼
-                actual_command_dto['correlation_id'] = websocket_msg.correlation_id
-                # ▼▼▼ ЭТОТ БЛОК НУЖНО ПРОВЕРИТЬ И ИСПРАВИТЬ ▼▼▼
-                
-                # 3. Получаем домен из "обертки"
-                domain = command_wrapper.get("domain", "system") # 'system' как запасной вариант
-                
-                # 4. Получаем имя команды из "чистой" команды
-                command_name = actual_command_dto.get("command", "default")
-                
-                # 5. Собираем правильный ключ
-                routing_key = f"{RoutingKeys.COMMAND_PREFIX}.{domain}.{command_name}"
-                
-                # ▲▲▲ КОНЕЦ БЛОКА ДЛЯ ПРОВЕРКИ ▲▲▲
-
-                logger.debug(f"Получена команда от {client_id}. Ключ: '{routing_key}'.")
-
+            if isinstance(frame, WSCommandFrame):
+                # Публикуем команду в шину (cmd.<domain>.<command>)
+                rqid = frame.request_id or f"req_{uuid.uuid4().hex}"
+                env = BackendInboundCommandEnvelope(
+                    request_id=rqid,
+                    routing=RoutingInfo(domain=frame.domain, command=frame.command),
+                    auth=AuthInfo(account_id=account_id),
+                    origin=OriginInfo(transport="ws", connection_id=conn_key, ip=getattr(websocket.client, 'host', None)),
+                    payload=frame.payload or {},
+                )
+                routing_key = f"{RoutingKeys.COMMAND_PREFIX}.{frame.domain}.{frame.command}"  # "cmd.<domain>.<command>"
                 await message_bus.publish(
                     exchange_name=Exchanges.COMMANDS,
                     routing_key=routing_key,
-                    message=actual_command_dto
+                    message=env.model_dump(mode="json"),
+                    correlation_id=rqid,
                 )
-                logger.info(f"Команда '{command_name}' от {client_id} опубликована в {Exchanges.COMMANDS} с ключом '{routing_key}'.")
+            else:
+                # subscribe/unsubscribe не реализованы пока
+                err = WSErrorFrame(error={"code": "common.NOT_IMPLEMENTED", "message": "Only 'command' supported now"})
+                await websocket.send_text(err.model_dump_json())
 
     except WebSocketDisconnect:
-        logger.info(f"Клиент {client_id or client_address} отключился.")
+        logger.info(f"WS disconnect: {conn_key or client_addr}")
     except asyncio.TimeoutError:
-        logger.warning(f"Таймаут аутентификации для клиента {client_address}. Соединение закрыто.")
         if websocket.client_state != WebSocketState.DISCONNECTED:
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout.")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
     except Exception as e:
-        logger.error(f"Произошла ошибка в WebSocket-соединении для {client_id or client_address}: {e}", exc_info=True)
+        logger.exception("WS error")
         if websocket.client_state != WebSocketState.DISCONNECTED:
-            await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error.")
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error")
     finally:
-        if client_id:
-            client_conn_manager.disconnect(client_id)
-        logger.info(f"Соединение с {client_id or client_address} полностью закрыто.")
+        if conn_key:
+            client_conn_manager.disconnect(conn_key)
+        logger.info(f"WS close: {conn_key or client_addr}")

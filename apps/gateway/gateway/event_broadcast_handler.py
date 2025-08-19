@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 from libs.messaging.rabbitmq_names import Queues
 from libs.messaging.i_message_bus import IMessageBus
 from apps.gateway.gateway.client_connection_manager import ClientConnectionManager
-from utils.logging_setup import app_logger as logger  # если нет — замените на стандартный logging.getLogger(__name__)
+from libs.utils.logging_setup import app_logger as logger
 
 
 class EventBroadcastHandler:
@@ -34,7 +34,7 @@ class EventBroadcastHandler:
             logger.warning("EventBroadcastHandler уже запущен.")
 
     async def _listen_loop(self) -> None:
-        """Регистрирует колбэк в шине сообщений."""
+        """Регистрирует коллбэк в шине сообщений."""
         try:
             await self.message_bus.consume(self.inbound_queue_name, self._on_message_received)
         except Exception as e:
@@ -43,7 +43,7 @@ class EventBroadcastHandler:
 
     async def _on_message_received(self, data: Dict[str, Any], meta: Dict[str, Any]) -> None:
         """
-        Колбэк шины. data — уже распарсенный JSON, meta — метаданные (routing_key, correlation_id, ...).
+        Коллбэк шины. data — уже распарсенный JSON, meta — метаданные (routing_key, correlation_id, ...).
         """
         try:
             routing_key = meta.get("routing_key") or "event.unknown"
@@ -72,3 +72,7 @@ class EventBroadcastHandler:
 
         except Exception as e:
             logger.error(f"Ошибка при массовой рассылке события: {e}", exc_info=True)
+
+    @property
+    def listen_task(self):
+        return self._listen_task

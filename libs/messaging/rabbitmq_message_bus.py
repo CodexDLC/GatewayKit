@@ -2,6 +2,7 @@
 from __future__ import annotations
 import asyncio
 import json
+import uuid
 from typing import Any, Dict, Optional
 
 try:
@@ -164,3 +165,53 @@ class RabbitMQMessageBus(IMessageBus):
             correlation_id=correlation_id,
         )
         await q.publish(msg)
+
+    async def call_rpc(
+            self,
+            queue_name: str,
+            payload: Dict[str, Any],
+            *,
+            timeout: int = 5,
+            correlation_id: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        ch = await self._ensure()
+
+        # 1) reply-очередь (эксклюзивная, автоудаляемая)
+        callback_q = await ch.declare_queue(name="", exclusive=True, auto_delete=True, durable=False)
+
+        corr_id = correlation_id or str(uuid.uuid4())
+        fut = asyncio.get_running_loop().create_future()
+
+        async def _on_reply(msg: AbstractIncomingMessage):
+            if msg.correlation_id != corr_id:
+                return
+            async with msg.process(requeue=False):
+                try:
+                    data = json.loads(msg.body.decode("utf-8"))
+                except Exception:
+                    data = None
+                if not fut.done():
+                    fut.set_result(data)
+
+        consume_tag = await callback_q.consume(_on_reply, no_ack=False)
+        try:
+            # 2) публикуем в целевую ОЧЕРЕДЬ
+            target_q = await ch.get_queue(queue_name, ensure=True)
+            message = aio_pika.Message(
+                body=json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+                content_type="application/json",
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                correlation_id=corr_id,
+                reply_to=callback_q.name,
+            )
+            await target_q.publish(message)
+            # 3) ждём ответ
+            try:
+                return await asyncio.wait_for(fut, timeout=timeout)
+            except asyncio.TimeoutError:
+                return None
+        finally:
+            try:
+                await callback_q.cancel(consume_tag)
+            except Exception:
+                pass

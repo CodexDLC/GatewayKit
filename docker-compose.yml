@@ -32,11 +32,12 @@ services:
     image: redis:7.2-alpine
     container_name: redis_service
     networks: [backend_network]
-    command: ["redis-server", "--appendonly", "yes"]  # без пароля в базовой сборке
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     volumes: [ "redis_data:/data" ]
     ports: [ "6379:6379" ]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # 2. Добавляем пароль в команду healthcheck
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,7 +47,9 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq_service
     networks: [backend_network]
-    # guest/guest и vhost / по умолчанию
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes: [ "rabbitmq_data:/var/lib/rabbitmq" ]
     ports:
       - "5672:5672"
@@ -65,11 +68,31 @@ services:
       dockerfile: apps/gateway/Dockerfile
     container_name: gateway_service
     networks: [backend_network]
-    command: >
-      gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 gateway.main:app
-    ports: [ "8000:8000" ]
+    environment:
+      CONTAINER_ID: "gateway"         # для имён файлов логов
+      RABBITMQ_DSN: "amqp://guest:guest@rabbitmq:5672/"
+      LOG_LEVEL: "INFO"
+      # ALLOWED_ORIGINS="*"  # TODO: на проде ограничить домены
+    ports: ["8000:8000"]
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+    restart: always
+
+  auth_svc:
+    build:
+      context: .
+      dockerfile: apps/auth_svc/Dockerfile
+    container_name: auth_service
+    networks: [backend_network]
+    environment:
+      CONTAINER_ID: "auth_svc"        # для имён файлов логов
+      RABBITMQ_DSN: "amqp://guest:guest@rabbitmq:5672/"
+      JWT_SECRET: "dev-secret"        # вынести в .env позже
+      JWT_ALG: "HS256"
+      LOG_LEVEL: "INFO"
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+    ports: ["8001:8001"]
     restart: always

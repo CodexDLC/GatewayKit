@@ -1,122 +1,81 @@
+# apps/auth_svc/handlers/auth_validate_token_rpc_handler.py
 from __future__ import annotations
-
-from datetime import datetime, timezone
-from typing import List, Optional
-from uuid import UUID
-
-import jwt  # PyJWT
-from jwt import InvalidTokenError
+from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
-
-from .i_auth_handler import IAuthHandler
-
-
-# ---- DTO ----
+import jwt  # PyJWT
 
 class ValidateTokenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-    access_token: str
-    required_aud: Optional[str] = Field(default=None, description="Ожидаемая audience")
-    required_scopes: List[str] = Field(default_factory=list)
-    # опционально для обратки: кто спрашивает (лог/метрика)
-    requester: Optional[str] = None
-
+    # принимаем "access_token", но listener может маппить alias "token" -> "access_token"
+    access_token: str = Field(..., description="JWT для проверки")
+    # опционально можно слать aud/iss, если хотите жестко проверять
+    expected_aud: Optional[str] = None
+    expected_iss: Optional[str] = None
 
 class ValidateTokenResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
     valid: bool
-    user_id: Optional[str] = None
-    client_id: Optional[str] = None
+    user_id: Optional[str] = None       # sub как строка
+    account_id: Optional[int] = None    # sub как int, если возможно
+    client_id: Optional[str] = None     # aud
     scopes: List[str] = Field(default_factory=list)
     iat: Optional[int] = None
     exp: Optional[int] = None
-    # диагностика, если invalid
     error_code: Optional[str] = None
     error_message: Optional[str] = None
 
-
-# ---- Handler ----
-
-class AuthValidateTokenRpcHandler(IAuthHandler):
+class AuthValidateTokenRpcHandler:
     """
-    Валидация JWT access_token.
-    - Проверяет подпись, exp/nbf.
-    - По желанию — issuer/audience.
-    - Проверяет наличие required_scopes.
+    Реализует валидацию JWT:
+    - проверка подписи (secret + alg)
+    - проверка exp (истечения)
+    - при наличии expected_iss/aud — также их сверка
     """
-
-    def __init__(
-        self,
-        *,
-        jwt_secret: str,
-        jwt_alg: str = "HS256",
-        issuer: Optional[str] = None,
-        default_audience: Optional[str] = None,
-        leeway_seconds: int = 10,
-    ) -> None:
+    def __init__(self, *, jwt_secret: str, jwt_alg: str = "HS256") -> None:
         self._secret = jwt_secret
         self._alg = jwt_alg
-        self._issuer = issuer
-        self._default_aud = default_audience
-        self._leeway = int(leeway_seconds)
 
     async def process(self, dto: ValidateTokenRequest) -> ValidateTokenResponse:
         try:
-            aud = dto.required_aud or self._default_aud
-            options = {
-                "require": ["exp", "iat"],
-            }
             decoded = jwt.decode(
                 dto.access_token,
                 self._secret,
                 algorithms=[self._alg],
-                audience=aud if aud else None,
-                issuer=self._issuer if self._issuer else None,
-                options=options,
-                leeway=self._leeway,
+                options={"require": ["exp", "iat"]},  # требуем exp/iat
+                audience=dto.expected_aud,            # если None — аудитория не проверяется
+                issuer=dto.expected_iss,              # если None — iss не проверяется
             )
+            sub = decoded.get("sub")
+            user_id = str(sub) if sub is not None else None
+            account_id = None
+            try:
+                account_id = int(sub) if sub is not None else None
+            except Exception:
+                account_id = None
 
-            user_id = str(decoded.get("sub") or "")
-            client_id = str(decoded.get("aud") or "") if isinstance(decoded.get("aud"), (str,)) else None
-            scopes_str = decoded.get("scope") or ""
-            token_scopes = [s for s in scopes_str.split() if s]
+            aud = decoded.get("aud")
+            client_id = aud if isinstance(aud, str) else (aud[0] if isinstance(aud, list) and aud else None)
 
-            # scope-check (все требуемые должны присутствовать)
-            if dto.required_scopes:
-                missing = [s for s in dto.required_scopes if s not in token_scopes]
-                if missing:
-                    return ValidateTokenResponse(
-                        valid=False,
-                        user_id=user_id or None,
-                        client_id=client_id,
-                        scopes=token_scopes,
-                        iat=decoded.get("iat"),
-                        exp=decoded.get("exp"),
-                        error_code="scope.missing",
-                        error_message=f"missing scopes: {', '.join(missing)}",
-                    )
+            scope_raw = decoded.get("scope") or ""
+            scopes = [s for s in scope_raw.split() if s]
 
             return ValidateTokenResponse(
                 valid=True,
-                user_id=user_id or None,
+                user_id=user_id,
+                account_id=account_id,
                 client_id=client_id,
-                scopes=token_scopes,
+                scopes=scopes,
                 iat=decoded.get("iat"),
                 exp=decoded.get("exp"),
             )
 
-        except InvalidTokenError as e:
-            # подпись/срок/iss/aud и т.п.
-            return ValidateTokenResponse(
-                valid=False,
-                error_code="token.invalid",
-                error_message=str(e),
-            )
+        except jwt.ExpiredSignatureError as e:
+            return ValidateTokenResponse(valid=False, error_code="auth.TOKEN_EXPIRED", error_message=str(e))
+        except jwt.InvalidAudienceError as e:
+            return ValidateTokenResponse(valid=False, error_code="auth.BAD_AUDIENCE", error_message=str(e))
+        except jwt.InvalidIssuerError as e:
+            return ValidateTokenResponse(valid=False, error_code="auth.BAD_ISSUER", error_message=str(e))
+        except jwt.InvalidTokenError as e:
+            return ValidateTokenResponse(valid=False, error_code="auth.INVALID_TOKEN", error_message=str(e))
         except Exception as e:
-            return ValidateTokenResponse(
-                valid=False,
-                error_code="token.error",
-                error_message=str(e),
-            )
+            return ValidateTokenResponse(valid=False, error_code="auth.INTERNAL_ERROR", error_message=str(e))

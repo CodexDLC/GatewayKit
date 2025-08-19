@@ -1,0 +1,14 @@
+# apps/gateway/dependencies.py
+from fastapi import Request
+from libs.messaging.i_message_bus import IMessageBus
+from apps.gateway.gateway.client_connection_manager import ClientConnectionManager
+from apps.gateway.config.setting_gateway import GatewaySettings
+
+def get_message_bus(request: Request) -> IMessageBus:
+    return request.app.state.container.message_bus
+
+def get_client_connection_manager(request: Request) -> ClientConnectionManager:
+    return request.app.state.client_connection_manager
+
+def get_settings(request: Request) -> GatewaySettings:
+    return request.app.state.settings

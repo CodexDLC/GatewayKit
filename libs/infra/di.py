@@ -1,3 +1,5 @@
+# libs/infra/di.py
+
 from __future__ import annotations
 
 import os
@@ -6,7 +8,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+# motor импорты удалены
+# from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from infra.central_redis_client import CentralRedisClient
 from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
@@ -21,9 +24,8 @@ class Container:
     """Простой DI-контейнер без inject; только фактические singletons."""
     bus: Optional[RabbitMQMessageBus] = None
     redis: Optional[CentralRedisClient] = None
-    mongo_client: Optional[AsyncIOMotorClient] = None
-    mongo_db: Optional[AsyncIOMotorDatabase] = None
-    session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal  # фабрика сессий PG
+    # mongo поля удалены
+    session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal
 
     async def init(self) -> "Container":
         # RabbitMQ
@@ -37,14 +39,11 @@ class Container:
         self.redis = CentralRedisClient(redis_url=redis_url, password=redis_pwd)
         await self.redis.connect()
 
-        # Mongo
-        mongo_uri = os.getenv("MONGO_URI", "mongodb://mongo_db:27017")
-        db_name = os.getenv("MONGO_DB_NAME", "game_db_mongo")
-        self.mongo_client = AsyncIOMotorClient(mongo_uri)
-        self.mongo_db = self.mongo_client.get_database(db_name)
+        # Mongo блок удален
 
         log.info("DI container initialized")
         return self
+
 
     async def shutdown(self) -> None:
         # Закрываем в обратном порядке

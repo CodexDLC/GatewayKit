@@ -1,30 +1,21 @@
 # libs/messaging/rabbitmq_names.py
 
 class Exchanges:
-    """Имена обменников (topic)."""
+    # TODO: legacy. Команд/событий пока нет, оставлено, чтобы не ломать импорты.
     COMMANDS = "commands.exchange"
     EVENTS   = "events.exchange"
 
-
 class Queues:
-    """Имена очередей."""
-    # RPC (auth)
-    AUTH_VALIDATE_TOKEN_RPC = "rpc.auth.validate_token"
-    AUTH_ISSUE_BOT_TOKEN_RPC = "rpc.auth.issue_token"
+    AUTH_VALIDATE_TOKEN_RPC  = "rpc.auth.validate_token"
+    AUTH_ISSUE_TOKEN_RPC     = "rpc.auth.issue_token"   # было AUTH_ISSUE_BOT_TOKEN_RPC
+    AUTH_REGISTER_RPC        = "rpc.auth.register"      # НОВОЕ
 
-    # Команды
-    AUTH_COMMANDS         = "q.commands.auth"
-    COORDINATOR_COMMANDS  = "q.commands.coordinator"
-    SYSTEM_COMMANDS       = "q.commands.system"
-    SYSTEM_CACHE_REQUESTS = "q.system.cache_requests"
-
-    # Gateway
+    # legacy — не используются в минимальной топологии, удалим после выноса импорта из main.py
     GATEWAY_OUTBOUND_WS_MESSAGES = "q.gateway.outbound_ws_messages"
     GATEWAY_INBOUND_EVENTS       = "q.gateway.inbound_events"
 
-
 class RoutingKeys:
-    """Префиксы/шаблоны ключей маршрутизации."""
-    COMMAND_PREFIX  = "command"   # command.<domain>.#
-    RESPONSE_PREFIX = "response"  # response.#
-    EVENT_PREFIX    = "event"     # event.#
+    # legacy — зарезервировано под будущие cmd./evt.
+    COMMAND_PREFIX  = "cmd"
+    RESPONSE_PREFIX = "resp"
+    EVENT_PREFIX    = "evt"

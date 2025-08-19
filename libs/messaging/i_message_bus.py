@@ -58,3 +58,15 @@ class IMessageBus(ABC):
 
     @abstractmethod
     async def publish_rpc_response(self, reply_to: str, response: Dict[str, Any], *, correlation_id: Optional[str]) -> None: ...
+
+    @abstractmethod
+    async def call_rpc(
+        self,
+        queue_name: str,
+        payload: Dict[str, Any],
+        *,
+        timeout: int = 5,
+        correlation_id: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Отправить payload в RPC-очередь и дождаться ответа (dict) либо None по таймауту."""
+        ...

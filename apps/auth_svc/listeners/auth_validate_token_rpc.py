@@ -4,8 +4,9 @@ from typing import Any, Dict, Optional
 
 from pydantic import ValidationError
 
+from libs.messaging.base_listener import BaseMicroserviceListener
 from libs.messaging.i_message_bus import IMessageBus
-from ....libs.messaging.base_listener import BaseMicroserviceListener
+
 from apps.auth_svc.handlers.auth_validate_token_rpc_handler import (
     AuthValidateTokenRpcHandler,
     ValidateTokenRequest,
@@ -50,6 +51,9 @@ class AuthValidateTokenRpc(BaseMicroserviceListener):
 
         # Валидация DTO
         try:
+            # alias: поддерживаем payload["token"] как синоним "access_token"
+            if "token" in payload and "access_token" not in payload:
+                payload["access_token"] = payload.pop("token")
             req = ValidateTokenRequest.model_validate(payload)
         except ValidationError as ve:
             # Формируем отрицательный ответ без исключения (RPC-ответ)

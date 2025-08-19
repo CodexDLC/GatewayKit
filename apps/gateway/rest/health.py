@@ -3,7 +3,7 @@
 
 import os
 from fastapi import APIRouter
-from game_server.config.logging.logging_setup import app_logger as logger
+from libs.utils.logging_setup import app_logger as logger
 
 router = APIRouter(tags=["Health Check"])
 

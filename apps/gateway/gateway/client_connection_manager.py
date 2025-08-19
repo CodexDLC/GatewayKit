@@ -1,15 +1,15 @@
 # game_server/app_gateway/gateway/client_connection_manager.py
 
-import asyncio
-from typing import Dict, Any, Optional
+
+from typing import Dict, Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
-from utils.logging_setup import app_logger as logger
+from libs.utils.logging_setup import app_logger as logger
 class ClientConnectionManager:
     """
     Универсальный менеджер для управления всеми активными WebSocket-соединениями.
-    Хранит ссылки на WebSocket-соединения, индексированные по уникальному client_id.
+    Хранит ссылки на WebSocket-соединения, индексированные по-уникальному client_id.
     """
     # Словарь для хранения активных соединений: {client_id: WebSocket}
     active_connections: Dict[str, WebSocket] = {}
