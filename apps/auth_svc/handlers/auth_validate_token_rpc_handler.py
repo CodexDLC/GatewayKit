@@ -1,30 +1,11 @@
 # apps/auth_svc/handlers/auth_validate_token_rpc_handler.py
 from __future__ import annotations
-from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
 import jwt  # PyJWT
 
-class ValidateTokenRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    # принимаем "access_token", но listener может маппить alias "token" -> "access_token"
-    access_token: str = Field(..., description="JWT для проверки")
-    # опционально можно слать aud/iss, если хотите жестко проверять
-    expected_aud: Optional[str] = None
-    expected_iss: Optional[str] = None
+from apps.auth_svc.i_auth_handler import IAuthHandler
+from libs.domain.dto.auth import ValidateTokenRequest, ValidateTokenResponse
 
-class ValidateTokenResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    valid: bool
-    user_id: Optional[str] = None       # sub как строка
-    account_id: Optional[int] = None    # sub как int, если возможно
-    client_id: Optional[str] = None     # aud
-    scopes: List[str] = Field(default_factory=list)
-    iat: Optional[int] = None
-    exp: Optional[int] = None
-    error_code: Optional[str] = None
-    error_message: Optional[str] = None
-
-class AuthValidateTokenRpcHandler:
+class AuthValidateTokenRpcHandler(IAuthHandler):
     """
     Реализует валидацию JWT:
     - проверка подписи (secret + alg)

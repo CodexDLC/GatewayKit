@@ -48,10 +48,10 @@ services:
     container_name: rabbitmq_service
     networks: [backend_network]
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-    volumes: [ "rabbitmq_data:/var/lib/rabbitmq" ]
-    ports:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_ADMIN_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_ADMIN_PASS}
+    volumes: [ "rabbitmq_data:/var/lib/rabbitmq" ] # <-- ИСПРАВЛЕННЫЙ ОТСТУП
+    ports:                                         # <-- ИСПРАВЛЕННЫЙ ОТСТУП
       - "5672:5672"
       - "15672:15672"
     healthcheck:
@@ -69,8 +69,8 @@ services:
     container_name: gateway_service
     networks: [backend_network]
     environment:
-      CONTAINER_ID: "gateway"         # для имён файлов логов
-      RABBITMQ_DSN: "amqp://guest:guest@rabbitmq:5672/"
+      CONTAINER_ID: "gateway"
+      RABBITMQ_DSN: "amqp://${RABBITMQ_GATEWAY_USER}:${RABBITMQ_GATEWAY_PASS}@rabbitmq:5672/"
       LOG_LEVEL: "INFO"
       # ALLOWED_ORIGINS="*"  # TODO: на проде ограничить домены
     ports: ["8000:8000"]
@@ -85,8 +85,8 @@ services:
     container_name: auth_service
     networks: [backend_network]
     environment:
-      CONTAINER_ID: "auth_svc"        # для имён файлов логов
-      RABBITMQ_DSN: "amqp://guest:guest@rabbitmq:5672/"
+      CONTAINER_ID: "auth_svc"
+      RABBITMQ_DSN: "amqp://${RABBITMQ_AUTH_USER}:${RABBITMQ_AUTH_PASS}@rabbitmq:5672/"
       JWT_SECRET: "dev-secret"        # вынести в .env позже
       JWT_ALG: "HS256"
       LOG_LEVEL: "INFO"

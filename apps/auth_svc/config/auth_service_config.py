@@ -1,8 +1,5 @@
 # apps/auth_svc/config/auth_service_config.py
 from __future__ import annotations
-from typing import Dict, Type
-from pydantic import BaseModel
-
 from apps.auth_svc.handlers.auth_issue_token_rpc_handler import IssueTokenRequest
 from apps.auth_svc.handlers.auth_validate_token_rpc_handler import ValidateTokenRequest
 from apps.auth_svc.handlers.auth_register_rpc_handler import RegisterRequest

@@ -11,3 +11,9 @@ from .backend import (
     RoutingInfo, AuthInfo, OriginInfo, ActorHint,
     Recipient, Delivery, DeliveryGroup
 )
+
+from .auth import (
+    IssueTokenRequest, IssueTokenResponse,
+    ValidateTokenRequest, ValidateTokenResponse,
+    RegisterRequest, RegisterResponse,
+)

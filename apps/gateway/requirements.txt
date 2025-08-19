@@ -8,6 +8,10 @@ python-dotenv
 
 # Pydantic для моделей данных
 pydantic
+pydantic-settings
+email-validator
+PyJWT[crypto]
+cryptography
 
 # RabbitMQ клиент
 aio-pika

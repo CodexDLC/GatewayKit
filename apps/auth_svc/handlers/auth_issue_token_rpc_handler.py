@@ -1,41 +1,9 @@
 # apps/auth_svc/handlers/auth_issue_token_rpc_handler.py
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Literal
 import jwt
-from pydantic import BaseModel, Field, ConfigDict
-
-from i_auth_handler import IAuthHandler
-
-# ---- DTO ----
-class IssueTokenRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    grant_type: Literal["password", "bot", "direct"] = "password"
-
-    # password-flow (игрок)
-    username: Optional[str] = None
-    password: Optional[str] = None
-    otp_code: Optional[str] = None
-
-    # bot-flow
-    bot_name: Optional[str] = None
-    bot_secret: Optional[str] = None
-
-    # direct (выдать по известному id)
-    user_id: Optional[int] = None
-
-    client_id: Optional[str] = "game_client"
-    scopes: List[str] = Field(default_factory=list)
-    expires_in: Optional[int] = Field(default=None, ge=60)
-
-class IssueTokenResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    token: str                 # <-- вместо access_token
-    token_type: str = "Bearer"
-    expires_in: int
-    account_id: int            # <-- int для гейтвея
+from libs.domain.dto.auth import IssueTokenRequest, IssueTokenResponse
+from apps.auth_svc.i_auth_handler import IAuthHandler
 
 class AuthIssueTokenRpcHandler(IAuthHandler):
     def __init__(self, *, jwt_secret: str, jwt_alg: str = "HS256",

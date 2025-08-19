@@ -2,8 +2,12 @@
 from __future__ import annotations
 import asyncio
 import json
+import os
 import uuid
+import time
 from typing import Any, Dict, Optional
+from libs.utils.logging_setup import app_logger as logger
+
 
 try:
     import orjson  # быстрее json
@@ -37,15 +41,26 @@ class RabbitMQMessageBus(IMessageBus):
         self._closing = False
 
     async def connect(self) -> None:
+        """Подключение к RabbitMQ с ретраями и общим таймаутом."""
         self._closing = False
+        backoff = getattr(self, "_backoff", 1.0)  # сек, если не задан в __init__
+        timeout = float(os.getenv("RABBITMQ_CONNECT_TIMEOUT", "15"))  # 0 или <0 = бесконечно
+        deadline = (time.monotonic() + timeout) if timeout > 0 else None
+        attempt = 0
+
         while True:
+            attempt += 1
             try:
+                logger.info("bus: connecting to RabbitMQ (attempt %s) dsn=%s", attempt, self._dsn)
                 self._conn = await aio_pika.connect_robust(self._dsn)
-                self._chan = await self._conn.channel(publisher_confirms=self._pub_confirms)
-                # QoS по умолчанию не ставим здесь — задаётся на consumer
+                self._chan = await self._conn.channel(publisher_confirms=getattr(self, "_pub_confirms", True))
+                logger.info("bus: connected to RabbitMQ")
                 return
-            except Exception:
-                await asyncio.sleep(self._backoff)
+            except Exception as e:
+                if deadline is not None and time.monotonic() >= deadline:
+                    logger.error("bus: connect timeout after %s attempts: %s", attempt, e)
+                    raise
+                await asyncio.sleep(backoff)
 
     async def close(self) -> None:
         self._closing = True
