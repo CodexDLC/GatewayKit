@@ -22,6 +22,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # код
 COPY pyproject.toml .
+COPY alembic.ini .
+COPY migrations ./migrations
 COPY libs ./libs
 COPY apps ./apps
 RUN pip install .
