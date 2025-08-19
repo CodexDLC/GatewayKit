@@ -9,7 +9,6 @@ RUN python -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN pip install -U pip wheel
-# ВАЖНО: берем requirements именно auth_svc
 COPY apps/auth_svc/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -27,11 +26,12 @@ COPY libs ./libs
 COPY apps ./apps
 RUN pip install .
 
-# логи (libs/utils/logging_setup.py пишет в /app/logs), UID=1001 как у гейтвея
+# логи
 RUN mkdir -p /app/logs && chown -R 1001:1001 /app/logs
 
 EXPOSE 8001
 USER 1001
 
-# Auth-сервис
+# --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+# Запускаем новый, правильный файл auth_svc_main.py
 CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","-w","1","-b","0.0.0.0:8001","apps.auth_svc.auth_svc_main:app"]
