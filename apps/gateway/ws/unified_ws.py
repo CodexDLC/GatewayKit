@@ -12,7 +12,7 @@ from starlette.websockets import WebSocketState
 
 from apps.gateway.gateway.client_connection_manager import ClientConnectionManager
 from libs.messaging.i_message_bus import IMessageBus
-from libs.messaging.rabbitmq_names import Queues, Exchanges, RoutingKeys
+from libs.messaging.rabbitmq_names import Queues, Exchanges
 from libs.utils.logging_setup import app_logger as logger
 
 # --- DI зависимости (settings опционально) ---

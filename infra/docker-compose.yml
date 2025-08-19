@@ -1,5 +1,4 @@
 # infra/docker-compose.yml
-version: "3.9"
 
 volumes:
   pg_data:

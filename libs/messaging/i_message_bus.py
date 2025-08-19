@@ -3,24 +3,29 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Callable, Dict, Optional
 
-MessageHandler = Callable[[Dict[str, Any], Dict[str, Any]], Awaitable[None]]
-# handler(body: dict, meta: dict) -> None
-# meta: {message_id, correlation_id, routing_key, exchange, headers, reply_to, redelivered}
+# --- ИСПРАВЛЕНИЕ: Handler теперь принимает сырое сообщение от aio_pika ---
+import aio_pika
+MessageHandler = Callable[[aio_pika.abc.AbstractIncomingMessage], Awaitable[None]]
+# --------------------------------------------------------------------
 
 class IMessageBus(ABC):
     """Абстракция над шиной сообщений (JSON)."""
 
     @abstractmethod
-    async def is_connected(self) -> bool: ... # <-- ДОБАВЛЕНО
+    async def is_connected(self) -> bool:
+        ...
 
     @abstractmethod
-    async def connect(self) -> None: ...
+    async def connect(self) -> None:
+        ...
 
     @abstractmethod
-    async def close(self) -> None: ...
+    async def close(self) -> None:
+        ...
 
     @abstractmethod
-    async def declare_exchange(self, name: str, type_: str = "direct", durable: bool = True) -> None: ...
+    async def declare_exchange(self, name: str, type_: str = "direct", durable: bool = True) -> None:
+        ...
 
     @abstractmethod
     async def declare_queue(
@@ -28,13 +33,16 @@ class IMessageBus(ABC):
         name: str,
         *,
         durable: bool = True,
+        arguments: Optional[Dict[str, Any]] = None,
         dead_letter_exchange: Optional[str] = None,
         dead_letter_routing_key: Optional[str] = None,
         max_priority: Optional[int] = None,
-    ) -> None: ...
+    ) -> None:
+        ...
 
     @abstractmethod
-    async def bind_queue(self, queue_name: str, exchange_name: str, routing_key: str) -> None: ...
+    async def bind_queue(self, queue_name: str, exchange_name: str, routing_key: str) -> None:
+        ...
 
     @abstractmethod
     async def publish(
@@ -48,7 +56,8 @@ class IMessageBus(ABC):
         reply_to: Optional[str] = None,
         headers: Optional[Dict[str, Any]] = None,
         persistent: bool = True,
-    ) -> None: ...
+    ) -> None:
+        ...
 
     @abstractmethod
     async def consume(
@@ -58,20 +67,21 @@ class IMessageBus(ABC):
         *,
         prefetch: int = 1,
     ) -> None:
-        """Подписаться на очередь. Авто-ACK при успешном handler, иначе reject (requeue=False)."""
+        """Подписаться на очередь. Handler получает полное сообщение aio_pika."""
         ...
 
     @abstractmethod
-    async def publish_rpc_response(self, reply_to: str, response: Dict[str, Any], *, correlation_id: Optional[str]) -> None: ...
+    async def publish_rpc_response(self, reply_to: str, response: Dict[str, Any], *, correlation_id: Optional[str]) -> None:
+        ...
 
     @abstractmethod
     async def call_rpc(
         self,
-        queue_name: str,
+        exchange_name: str,
+        routing_key: str,
         payload: Dict[str, Any],
         *,
-        timeout: int = 5,
         correlation_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Отправить payload в RPC-очередь и дождаться ответа (dict) либо None по таймауту."""
+        """Отправить payload в RPC-exchange и дождаться ответа."""
         ...
