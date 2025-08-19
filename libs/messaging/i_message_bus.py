@@ -33,6 +33,10 @@ class IMessageBus(ABC):
         name: str,
         *,
         durable: bool = True,
+        # --- ДОБАВЬТЕ ЭТИ ДВА АРГУМЕНТА ---
+        exclusive: bool = False,
+        auto_delete: bool = False,
+        # -----------------------------------
         arguments: Optional[Dict[str, Any]] = None,
         dead_letter_exchange: Optional[str] = None,
         dead_letter_routing_key: Optional[str] = None,

@@ -128,8 +128,13 @@ class RabbitMQMessageBus(IMessageBus):
         exchange_type = aio_pika.ExchangeType(type_)
         await ch.declare_exchange(name, exchange_type, durable=durable)
 
-    async def declare_queue(self, name: str, *, durable: bool = True, arguments: Optional[Dict[str, Any]] = None,
-                            dead_letter_exchange: Optional[str] = None, dead_letter_routing_key: Optional[str] = None,
+    async def declare_queue(self, name: str, *,
+                            durable: bool = True,
+                            exclusive: bool = False,  # <-- ДОБАВЬТЕ
+                            auto_delete: bool = False,  # <-- ДОБАВЬТЕ
+                            arguments: Optional[Dict[str, Any]] = None,
+                            dead_letter_exchange: Optional[str] = None,
+                            dead_letter_routing_key: Optional[str] = None,
                             max_priority: Optional[int] = None) -> None:
         ch = await self._ensure()
         args: Dict[str, Any] = arguments or {}
@@ -139,7 +144,15 @@ class RabbitMQMessageBus(IMessageBus):
             args["x-dead-letter-routing-key"] = dead_letter_routing_key
         if max_priority:
             args["x-max-priority"] = int(max_priority)
-        await ch.declare_queue(name, durable=durable, arguments=args or None)
+
+        # --- ПЕРЕДАЕМ НОВЫЕ АРГУМЕНТЫ В aio_pika ---
+        await ch.declare_queue(
+            name,
+            durable=durable,
+            exclusive=exclusive,
+            auto_delete=auto_delete,
+            arguments=args or None
+        )
 
     async def bind_queue(self, queue_name: str, exchange_name: str, routing_key: str) -> None:
         ch = await self._ensure()

@@ -1,14 +1,21 @@
+# apps/gateway/config/setting_gateway.py
 from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict  # <- новый пакет
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class GatewaySettings(BaseSettings):
-    model_config = SettingsConfigDict(  # pydantic v2 style
+    model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
     )
 
+    # --- НОВЫЕ НАСТРОЙКИ ---
+    GATEWAY_CORS_ALLOWED_ORIGINS: List[str] = ["*"]
+    GATEWAY_WS_PING_INTERVAL: int = 30
+    GATEWAY_WS_IDLE_TIMEOUT: int = 120
+    AUTH_HEADER: str = "Authorization"
+    # -------------------------
+
+    # Старые настройки
     RABBITMQ_DSN: str
-    WS_HEARTBEAT_SEC: int = 30
-    WS_AUTH_TIMEOUT_SEC: int = 5
-    WS_MAX_MSG_BYTES: int = 65536
-    ALLOWED_ORIGINS: List[str] = ["*"]  # TODO: на проде ограничить домены
+    REDIS_URL: str
+    REDIS_PASSWORD: str
