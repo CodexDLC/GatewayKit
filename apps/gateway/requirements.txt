@@ -19,3 +19,7 @@ aio-pika
 # Для цветных логов (используется в libs/utils/logging_setup.py)
 colorlog
 
+# Работа с базами данных
+SQLAlchemy
+asyncpg
+redis

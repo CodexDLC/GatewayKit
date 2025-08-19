@@ -8,12 +8,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-# motor импорты удалены
-# from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
-from infra.central_redis_client import CentralRedisClient
-from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
-from libs.infra.db import engine, AsyncSessionLocal
+# --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+# Используем относительный импорт, так как оба файла находятся в libs/infra
+from .central_redis_client import CentralRedisClient
+from .db import engine, AsyncSessionLocal
 
 
 log = logging.getLogger(__name__)
@@ -24,12 +23,13 @@ class Container:
     """Простой DI-контейнер без inject; только фактические singletons."""
     bus: Optional[RabbitMQMessageBus] = None
     redis: Optional[CentralRedisClient] = None
-    # mongo поля удалены
     session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal
 
     async def init(self) -> "Container":
         # RabbitMQ
         amqp_url = os.getenv("AMQP_URL", "amqp://guest:guest@rabbitmq:5672/")
+        # Импортируем здесь, чтобы избежать циклических зависимостей
+        from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
         self.bus = RabbitMQMessageBus(amqp_url)
         await self.bus.connect()
 
@@ -39,14 +39,11 @@ class Container:
         self.redis = CentralRedisClient(redis_url=redis_url, password=redis_pwd)
         await self.redis.connect()
 
-        # Mongo блок удален
-
         log.info("DI container initialized")
         return self
 
 
     async def shutdown(self) -> None:
-        # Закрываем в обратном порядке
         try:
             if self.bus:
                 await self.bus.close()
@@ -58,12 +55,6 @@ class Container:
                 await self.redis.close()
         except Exception:
             log.exception("redis close failed")
-
-        try:
-            if self.mongo_client:
-                self.mongo_client.close()  # motor: sync close
-        except Exception:
-            log.exception("mongo close failed")
 
         try:
             await engine.dispose()
