@@ -47,14 +47,13 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq_service
     networks: [backend_network]
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_ADMIN_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_ADMIN_PASS}
-      # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-      # Указываем RabbitMQ загрузить конкретный файл с определениями
-      RABBITMQ_LOAD_DEFINITIONS: /etc/rabbitmq/definitions.json
+    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+    # Переменные RABBITMQ_DEFAULT_USER и RABBITMQ_DEFAULT_PASS удалены.
+    # Теперь единственный источник пользователей - это монтируемые файлы.
+    environment: {}
     volumes:
       - "rabbitmq_data:/var/lib/rabbitmq"
+      - "./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf"
       - "./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json"
     ports:
       - "5672:5672"
