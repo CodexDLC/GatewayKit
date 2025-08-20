@@ -15,7 +15,7 @@ ListenerFactory = Callable[[IMessageBus, Container], Awaitable[BaseMicroserviceL
 # --- ИЗМЕНЕНИЕ: Фабрика больше не принимает аргументов ---
 def create_event_broadcast_listener_factory() -> ListenerFactory:
     """Фабрика для создания слушателя широковещательных событий."""
-    async def factory(bus: IMessageBus, container: Container) -> BaseMicroserviceListener:
+    async def factory(bus: IMessageBus, container: GatewayContainer) -> BaseMicroserviceListener:
         queue_name = f"gateway.events.broadcast.{uuid.uuid4().hex}"
         await bus.declare_queue(queue_name, durable=False, auto_delete=True, exclusive=True)
         await bus.bind_queue(queue_name, Ex.EVENTS, routing_key="#")

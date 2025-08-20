@@ -12,16 +12,13 @@ from urllib.parse import urlparse
 from libs.utils.logging_setup import app_logger as logger
 
 try:
-    import orjson
-    def _dumps(o):
-        return orjson.dumps(o)
+    import orjson  # type: ignore
+    _dumps = lambda o: orjson.dumps(o)
 except ImportError:
-    import json
-    def _dumps(o):
-        return json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    _dumps = lambda o: json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 import aio_pika
-from aio_pika.abc import AbstractIncomingMessage, AbstractRobustChannel
+from aio_pika.abc import AbstractIncomingMessage, AbstractRobustChannel, AbstractRobustConnection
 from .i_message_bus import IMessageBus, MessageHandler
 
 
@@ -35,7 +32,7 @@ class RabbitMQMessageBus(IMessageBus):
         self._dsn = dsn
         self._pub_confirms = publisher_confirms
         self._backoff = reconnect_backoff
-        self._conn: Optional[aio_pika.RobustConnection] = None
+        self._conn: Optional[AbstractRobustConnection] = None
         self._chan: Optional[AbstractRobustChannel] = None
         self._closing = False
         self._rpc_futures: Dict[str, asyncio.Future] = {}
@@ -233,5 +230,5 @@ class RabbitMQMessageBus(IMessageBus):
             logger.warning("RPC call timed out for correlation_id: %s", corr_id)
             return None
         finally:
-            # Гарантированно убираем future, чтобы избежать утечек памяти
-            await self._rpc_futures.pop(corr_id, None)
+            # --- ИСПРАВЛЕНИЕ: pop не асинхронный ---
+            self._rpc_futures.pop(corr_id, None)

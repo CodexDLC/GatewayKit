@@ -89,11 +89,10 @@ class BaseMicroserviceListener(ABC):
         Вызывается шиной. Управляет ACK/NACK и логикой Retry/DLQ.
         """
         try:
-            # Считаем количество попыток по заголовку x-death
             death_headers = msg.headers.get("x-death", [])
             retry_count = 0
-            if isinstance(death_headers, list) and death_headers:
-                # Берем 'count' из самого первого (последнего по времени) заголовка
+            # --- ИСПРАВЛЕНИЕ: Явная проверка типа ---
+            if isinstance(death_headers, list) and death_headers and isinstance(death_headers[0], dict):
                 retry_count = death_headers[0].get("count", 0)
 
             if retry_count >= self.RPC_MAX_RETRIES:

@@ -2,7 +2,7 @@
 from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Type, Callable, List, Optional, Awaitable
+from typing import Type, Callable, List, Optional, Awaitable, TypeVar
 from fastapi import FastAPI
 from pydantic_settings import BaseSettings
 
@@ -14,9 +14,10 @@ from libs.app.health import create_readiness_router
 from libs.infra.db import check_db_connection  # Импортируем проверку БД
 
 # Типы для фабрик
-ListenerFactory = Callable[[IMessageBus, AuthContainer], Awaitable]
+ContainerT = TypeVar("ContainerT")
+ListenerFactory = Callable[[IMessageBus, ContainerT], Awaitable]
 TopologyDeclarator = Callable[[IMessageBus], Awaitable[None]]
-ContainerFactory = Callable[[], Awaitable[AuthContainer]]
+ContainerFactory = Callable[[], Awaitable[ContainerT]]
 
 
 @asynccontextmanager
@@ -71,7 +72,7 @@ async def service_lifespan(
 def create_service_app(
         *,
         service_name: str,
-        container_factory: ContainerFactory,
+        container_factory: ContainerFactory[ContainerT],
         topology_declarator: TopologyDeclarator,
         listener_factories: Optional[List[ListenerFactory]] = None,
         settings_class: Optional[Type[BaseSettings]] = None,

@@ -70,43 +70,52 @@ class AuthService:
                 return None, ErrorCode.INTERNAL_ERROR
 
     async def issue_token(self, dto: IssueTokenRequest) -> tuple[dict | None, ErrorCode | None]:
-        """Выдает пару токенов по логину/паролю с защитой от bruteforce."""
+        """Выдает пару токенов по логину/паролю с защитой от брутфорса."""
+        if not dto.username or not dto.password:
+            return None, ErrorCode.AUTH_INVALID_CREDENTIALS
 
-        # --- НАЧАЛО: ЛОГИКА ЗАЩИТЫ ОТ БРУТФОРСА ---
+        # --- Шаг 1: Проверяем, не забанен ли пользователь ---
         ban_key = key_auth_ban(dto.username)
+        assert self.redis, "Redis client is not connected"  # Для mypy
         if await self.redis.exists(ban_key):
             log.warning(f"Bruteforce attempt rejected for banned user: {dto.username}")
             return None, ErrorCode.AUTH_FORBIDDEN
 
         attempts_key = key_auth_failed_attempts(dto.username)
-        # --- КОНЕЦ: ЛОГИКА ЗАЩИТЫ ОТ БРУТФОРСА ---
 
+        # --- Шаг 2: Идем в базу данных ---
         async with self.session_factory() as session:
             repo = AuthRepository(session)
-
             account = await repo.get_by_username(dto.username)
-            if not account or not account.credentials or not self.password_manager.verify_password(dto.password, account.credentials.password_hash):
 
-                # --- НАЧАЛО: ОБРАБОТКА НЕУДАЧНОЙ ПОПЫТКИ ---
+            # --- Шаг 3: Проверяем пароль ---
+            if not account or not account.credentials or not self.password_manager.verify_password(dto.password,
+                                                                                                   account.credentials.password_hash):
+
+                # --- ЛОГИКА ПРИ НЕУДАЧЕ ---
+                # Увеличиваем счетчик неудачных попыток
                 attempts = await self.redis.redis.incr(attempts_key)
+                # Если это первая неудачная попытка, ставим TTL на "окно"
                 if attempts == 1:
                     await self.redis.redis.expire(attempts_key, BRUTEFORCE_WINDOW_TTL_SEC)
 
+                # Если превысили лимит, баним пользователя
                 if attempts >= BRUTEFORCE_MAX_ATTEMPTS:
                     await self.redis.set(ban_key, "1", ex=BRUTEFORCE_LOCK_TTL_SEC)
-                    await self.redis.delete(attempts_key)
+                    await self.redis.delete(attempts_key)  # Удаляем счетчик, т.к. есть бан
                     log.warning(
-                        f"User {dto.username} has been banned for {BRUTEFORCE_LOCK_TTL_SEC} seconds due to bruteforce.")
-                # --- КОНЕЦ: ОБРАБОТКА НЕУДАЧНОЙ ПОПЫТКИ ---
+                        f"User {dto.username} has been banned for {BRUTEFORCE_LOCK_TTL_SEC}s due to bruteforce.")
 
                 return None, ErrorCode.AUTH_INVALID_CREDENTIALS
 
-            # --- НАЧАЛО: СБРОС СЧЕТЧИКОВ ПРИ УСПЕХЕ ---
+            # --- ЛОГИКА ПРИ УСПЕХЕ ---
+            # Сбрасываем счетчик неудачных попыток
             await self.redis.delete(attempts_key)
-            # --- КОНЕЦ: СБРОС СЧЕТЧИКОВ ПРИ УСПЕХЕ ---
 
+            # Выдаем пару токенов
             _access_token, response_data = await self.issue_token_pair(repo, account)
 
+            # Обновляем время последнего входа
             await repo.set_last_login(account.id, datetime.now(timezone.utc))
             await session.commit()
 
