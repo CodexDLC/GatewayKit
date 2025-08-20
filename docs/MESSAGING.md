@@ -6,14 +6,15 @@
 | Имя | Тип | Назначение |
 |---|---|---|
 | `core.rpc.v1` | direct | Для всех RPC-вызовов. |
-| `core.events.v1`| topic | Для доменных событий (публикация-подписка). |
-| `core.dlx.v1` | direct | Dead-Letter Exchange для маршрутизации "мертвых" и retry-сообщений. |
+| `core.events.v1`| topic | Для доменных событий. |
+| `core.dlx.v1` | direct | Dead-Letter Exchange для Retry/DLQ. |
 
-### Очереди
-Для каждого RPC-метода (например, `core.auth.rpc.issue_token.v1`) создается 3 очереди:
--   **Основная:** `core.auth.rpc.issue_token.v1` — здесь обрабатываются входящие запросы.
--   **Retry-очередь:** `core.auth.rpc.issue_token.v1.retry` — сюда попадают сообщения после временной ошибки. Имеет TTL.
--   **DLQ:** `core.auth.rpc.issue_token.v1.dlq` — "кладбище" сообщений после превышения всех попыток.
+### Очереди RPC (Auth Service)
+* `core.auth.rpc.register.v1`
+* `core.auth.rpc.issue_token.v1`
+* `core.auth.rpc.validate_token.v1`
+* `core.auth.rpc.refresh_token.v1`
+* `core.auth.rpc.logout.v1`
 
 ---
 

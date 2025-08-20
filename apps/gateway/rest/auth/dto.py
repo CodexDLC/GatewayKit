@@ -28,7 +28,6 @@ class RegisterResponse(BaseModel):
     email: EmailStr
     username: str
 
-# --- НОВЫЕ МОДЕЛИ ДЛЯ VALIDATE ---
 class ValidatedTokenData(BaseModel):
     """Данные из валидного токена."""
     account_id: int
@@ -39,4 +38,20 @@ class ValidatedTokenData(BaseModel):
 class ValidateResponse(BaseModel):
     valid: bool
     token_data: Optional[ValidatedTokenData] = None
-# -----------------------------------
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class RefreshTokenResponse(BaseModel):
+    token: str
+    refresh_token: str
+    token_type: str = "Bearer"
+    expires_in: int
+    account_id: int
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
+
+class LogoutResponse(BaseModel):
+    success: bool = True
+    message: str = "Successfully logged out"

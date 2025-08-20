@@ -28,18 +28,12 @@ async def login(
         payload=body.model_dump(),
         correlation_id=correlation_id
     )
-
-    if not rpc_resp:
-        raise HTTPException(status_code=get_http_status(ErrorCode.RPC_TIMEOUT),
-                            detail="Auth service did not respond.")
-
-    if not rpc_resp.get("success", False):
-        error_code = rpc_resp.get("error_code", ErrorCode.INTERNAL_ERROR)
+    if not rpc_resp or not rpc_resp.get("success"):
+        error_code = rpc_resp.get("error_code", ErrorCode.INTERNAL_ERROR) if rpc_resp else ErrorCode.RPC_TIMEOUT
         raise HTTPException(
             status_code=get_http_status(error_code),
-            detail=rpc_resp.get("message", "Failed to issue token.")
+            detail=rpc_resp.get("message", "Login failed.") if rpc_resp else "Auth service timeout."
         )
-
     return APIResponse[LoginResponse](success=True, data=rpc_resp.get("data"))
 
 
@@ -71,7 +65,6 @@ async def register(
     return APIResponse[RegisterResponse](success=True, data=rpc_resp.get("data"))
 
 
-# --- НОВЫЙ ЭНДПОИНТ ---
 @router.get("/validate", response_model=APIResponse[ValidateResponse])
 async def validate_token(
     request: Request,
@@ -108,6 +101,46 @@ async def validate_token(
     )
     return APIResponse[ValidateResponse](success=True, data=ValidateResponse(valid=True, token_data=token_data))
 
-# -------------------------
+
+@router.post("/refresh", response_model=APIResponse[RefreshTokenResponse])
+async def refresh(
+    request: Request,
+    body: RefreshTokenRequest,
+    message_bus: IMessageBus = Depends(get_message_bus),
+):
+    correlation_id = request.headers.get("x-request-id")
+    rpc_resp = await message_bus.call_rpc(
+        exchange_name=Exchanges.RPC,
+        routing_key=Queues.AUTH_REFRESH_TOKEN_RPC,
+        payload=body.model_dump(),
+        correlation_id=correlation_id
+    )
+    if not rpc_resp or not rpc_resp.get("success"):
+        error_code = rpc_resp.get("error_code", ErrorCode.AUTH_REFRESH_INVALID) if rpc_resp else ErrorCode.RPC_TIMEOUT
+        raise HTTPException(
+            status_code=get_http_status(error_code),
+            detail=rpc_resp.get("message", "Failed to refresh token.") if rpc_resp else "Auth service timeout."
+        )
+    return APIResponse[RefreshTokenResponse](success=True, data=rpc_resp.get("data"))
+
+
+@router.post("/logout", response_model=APIResponse[LogoutResponse])
+async def logout(
+    request: Request,
+    body: LogoutRequest,
+    message_bus: IMessageBus = Depends(get_message_bus),
+):
+    correlation_id = request.headers.get("x-request-id")
+    rpc_resp = await message_bus.call_rpc(
+        exchange_name=Exchanges.RPC,
+        routing_key=Queues.AUTH_LOGOUT_RPC,
+        payload=body.model_dump(),
+        correlation_id=correlation_id
+    )
+    # Для logout нам не важна ошибка, мы просто подтверждаем выход
+    if not rpc_resp or not rpc_resp.get("success"):
+        # Можно добавить логгирование, но клиенту всегда отдаем успех
+        pass
+    return APIResponse[LogoutResponse](success=True, data=LogoutResponse())
 
 auth_routes_router = router
