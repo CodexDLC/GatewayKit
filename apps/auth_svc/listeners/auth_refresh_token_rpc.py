@@ -42,7 +42,9 @@ class AuthRefreshTokenRpc(BaseMicroserviceListener):
             await self._reply(meta, rpc_response)
             return
 
-        rpc_response = await self._handler.process(req) # ИЗМЕНЕНИЕ: убрали повторное объявление типа
+        rpc_response = await self._handler.process(
+            req
+        )  # ИЗМЕНЕНИЕ: убрали повторное объявление типа
         await self._reply(meta, rpc_response)
 
     async def _reply(self, meta: Dict[str, Any], rpc_response: RpcResponse):

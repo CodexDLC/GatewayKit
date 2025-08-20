@@ -12,7 +12,9 @@ class APIResponse(BaseModel, Generic[PayloadT]):
 
 
 class ApiLoginRequest(BaseModel):
-    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)]
+    username: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)
+    ]
     password: Annotated[str, StringConstraints(min_length=8)]
 
 
@@ -25,7 +27,9 @@ class ApiLoginResponse(BaseModel):
 
 class ApiRegisterRequest(BaseModel):
     email: EmailStr
-    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=32)]
+    username: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=3, max_length=32)
+    ]
     password: Annotated[str, StringConstraints(min_length=8)]
 
 

@@ -19,7 +19,4 @@ class AuthIssueTokenRpcHandler:
                 success=False, error_code=error, message="Failed to issue token."
             )
 
-        return RpcResponse(
-            success=True,
-            data=token
-        )
+        return RpcResponse(success=True, data=token)

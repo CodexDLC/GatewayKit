@@ -4,6 +4,7 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 from typing import Any, TYPE_CHECKING
+
 # --- НОВЫЕ ИМПОРТЫ ---
 from .json_logging import JsonFormatter, SecretMaskingFilter
 
@@ -15,7 +16,7 @@ SUCCESS_LEVEL_NUM = 25
 logging.addLevelName(SUCCESS_LEVEL_NUM, "SUCCESS")
 
 
-def success_log_method(self: Logger, message: str, *args: Any, **kwargs: Any): # type: ignore
+def success_log_method(self: Logger, message: str, *args: Any, **kwargs: Any):  # type: ignore
     """Метод для уровня логирования SUCCESS."""
     if self.isEnabledFor(SUCCESS_LEVEL_NUM):
         self._log(SUCCESS_LEVEL_NUM, message, args, **kwargs)

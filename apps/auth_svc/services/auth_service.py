@@ -7,7 +7,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import IntegrityError
-from asyncpg.exceptions import UniqueViolationError # type: ignore
+from asyncpg.exceptions import UniqueViolationError  # type: ignore
 
 from libs.domain.orm.auth import Account
 from libs.domain.dto.auth import RegisterRequest, IssueTokenRequest
@@ -113,7 +113,7 @@ class AuthService:
                 # --- ЛОГИКА ПРИ НЕУДАЧЕ ---
                 # Увеличиваем счетчик неудачных попыток
                 if self.redis.redis is not None:
-                    attempts = await self.redis.redis.incr(attempts_key) # type: ignore
+                    attempts = await self.redis.redis.incr(attempts_key)  # type: ignore
                     # Если это первая неудачная попытка, ставим TTL на "окно"
                     if attempts == 1:
                         await self.redis.redis.expire(

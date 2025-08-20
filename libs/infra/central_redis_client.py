@@ -7,6 +7,7 @@ import datetime
 import redis.asyncio as redis_asyncio
 from redis.asyncio import Redis
 
+
 def _json_serializer(obj):
     if isinstance(obj, (datetime.datetime, datetime.date)):
         return obj.isoformat()

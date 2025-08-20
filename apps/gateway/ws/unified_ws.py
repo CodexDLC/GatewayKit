@@ -52,7 +52,9 @@ async def get_token_from_ws(
     await websocket.close(
         code=status.WS_1008_POLICY_VIOLATION, reason="Token not provided"
     )
-    raise WebSocketDisconnect(code=status.WS_1008_POLICY_VIOLATION, reason="Token not provided") # ИЗМЕНЕНИЕ
+    raise WebSocketDisconnect(
+        code=status.WS_1008_POLICY_VIOLATION, reason="Token not provided"
+    )  # ИЗМЕНЕНИЕ
 
 
 @router.websocket("/v1/connect")
@@ -99,7 +101,10 @@ async def unified_websocket_endpoint(
 
         # 3. Отправка HELLO
         hello = WSHelloFrame(
-            connection_id=conn_id, heartbeat_sec=settings.GATEWAY_WS_PING_INTERVAL, v=1, request_id=str(uuid.uuid4()) # ИЗМЕНЕНИЕ
+            connection_id=conn_id,
+            heartbeat_sec=settings.GATEWAY_WS_PING_INTERVAL,
+            v=1,
+            request_id=str(uuid.uuid4()),  # ИЗМЕНЕНИЕ
         )
         await websocket.send_text(hello.model_dump_json())
 
@@ -112,7 +117,9 @@ async def unified_websocket_endpoint(
             # В будущем здесь будет обработка входящих команд
             # Пока просто отвечаем pong на ping для keep-alive
             if "ping" in raw_data:
-                await websocket.send_text(WSPongFrame(v=1, request_id=str(uuid.uuid4())).model_dump_json()) # ИЗМЕНЕНИЕ
+                await websocket.send_text(
+                    WSPongFrame(v=1, request_id=str(uuid.uuid4())).model_dump_json()
+                )  # ИЗМЕНЕНИЕ
 
     except WebSocketDisconnect:
         logger.info(f"🔌 WS disconnect: account_id={account_id}, conn_id={conn_id}")

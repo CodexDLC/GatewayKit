@@ -5,7 +5,6 @@ from libs.domain.dto.rpc import RpcResponse
 from ..services.auth_service import AuthService
 
 
-
 class AuthRefreshTokenRpcHandler:
     def __init__(self, auth_service: AuthService) -> None:
         self.auth_service = auth_service
@@ -23,4 +22,8 @@ class AuthRefreshTokenRpcHandler:
         if token_data:
             return RpcResponse(success=True, data=RefreshTokenResponse(**token_data))
         else:
-            return RpcResponse(success=False, error_code="common.internal_error", message="Unexpected error.")
+            return RpcResponse(
+                success=False,
+                error_code="common.internal_error",
+                message="Unexpected error.",
+            )

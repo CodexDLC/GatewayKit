@@ -52,7 +52,9 @@ class ValidateTokenResponse(BaseModel):
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: EmailStr
-    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=32)]
+    username: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=3, max_length=32)
+    ]
     password: Annotated[str, StringConstraints(min_length=8)]
 
 
