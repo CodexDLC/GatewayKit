@@ -6,6 +6,7 @@ from typing import Type, Callable, List, Optional, Awaitable
 from fastapi import FastAPI
 from pydantic_settings import BaseSettings
 
+from libs.app.logging_middleware import LoggingMiddleware
 from libs.infra.di import Container
 from libs.messaging.i_message_bus import IMessageBus
 from libs.utils.logging_setup import app_logger as log
@@ -79,7 +80,7 @@ def create_service_app(
         container_factory: ContainerFactory = default_container_factory,
         topology_declarator: TopologyDeclarator,
         listener_factories: Optional[List[ListenerFactory]] = None,
-        settings_class: Optional[Type[BaseSettings]] = None,
+        settings_class: Optional[Type[BaseSettings]] = None,  # <-- ЭТОТ ПАРАМЕТР
         include_rest_routers: Optional[List] = None,
 ) -> FastAPI:
     """
@@ -94,13 +95,20 @@ def create_service_app(
 
     app = FastAPI(title=service_name, lifespan=_lifespan)
 
-    # --- ИЗМЕНЕНИЕ: создаем корутину при вызове ---
+    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    # Если передан класс настроек, создаем его экземпляр и сохраняем.
+    # Pydantic сам загрузит переменные из .env файла.
+    if settings_class:
+        app.state.settings = settings_class()
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+    app.add_middleware(LoggingMiddleware)
+
     async def rmq_check():
         is_ready = await app.state.container.bus.is_connected()
         return "rabbitmq", is_ready
 
     readiness_checks = [rmq_check]
-    # -----------------------------------------------
 
     app.include_router(create_readiness_router(readiness_checks))
 

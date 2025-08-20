@@ -9,49 +9,50 @@ class APIResponse(BaseModel, Generic[PayloadT]):
     message: Optional[str] = None
     data: Optional[PayloadT] = None
 
-class LoginRequest(BaseModel):
+# --- ИМЕНА ИЗМЕНЕНЫ ---
+class ApiLoginRequest(BaseModel):
     username: constr(strip_whitespace=True, min_length=3, max_length=64)
     password: constr(min_length=8)
 
-class LoginResponse(BaseModel):
+class ApiLoginResponse(BaseModel):
     token: str
+    refresh_token: str
     expires_in: int = Field(..., description="Время жизни токена, сек")
-    account_id: int = Field(..., description="ID аккаунта (int)")
+    account_id: int
 
-class RegisterRequest(BaseModel):
+class ApiRegisterRequest(BaseModel):
     email: EmailStr
     username: constr(strip_whitespace=True, min_length=3, max_length=32)
     password: constr(min_length=8)
 
-class RegisterResponse(BaseModel):
+class ApiRegisterResponse(BaseModel):
     account_id: int
     email: EmailStr
     username: str
 
-class ValidatedTokenData(BaseModel):
-    """Данные из валидного токена."""
+class ApiValidatedTokenData(BaseModel):
     account_id: int
     client_id: Optional[str] = None
     scopes: List[str] = Field(default_factory=list)
     exp: int
 
-class ValidateResponse(BaseModel):
+class ApiValidateResponse(BaseModel):
     valid: bool
-    token_data: Optional[ValidatedTokenData] = None
+    token_data: Optional[ApiValidatedTokenData] = None
 
-class RefreshTokenRequest(BaseModel):
+class ApiRefreshTokenRequest(BaseModel):
     refresh_token: str
 
-class RefreshTokenResponse(BaseModel):
+class ApiRefreshTokenResponse(BaseModel):
     token: str
     refresh_token: str
     token_type: str = "Bearer"
     expires_in: int
     account_id: int
 
-class LogoutRequest(BaseModel):
+class ApiLogoutRequest(BaseModel):
     refresh_token: str
 
-class LogoutResponse(BaseModel):
+class ApiLogoutResponse(BaseModel):
     success: bool = True
     message: str = "Successfully logged out"

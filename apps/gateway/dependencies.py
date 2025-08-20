@@ -11,6 +11,5 @@ def get_client_connection_manager(request: Request) -> ClientConnectionManager:
     return request.app.state.container.client_connection_manager
 
 def get_settings(request: Request) -> GatewaySettings:
-    if not hasattr(request.app.state, 'settings'):
-         request.app.state.settings = GatewaySettings()
+
     return request.app.state.settings
