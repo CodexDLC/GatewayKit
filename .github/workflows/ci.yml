@@ -84,6 +84,12 @@ jobs:
           cp .env.sample .env
           echo "LOG_FORMATTER=json" >> .env
 
+      # --- ДОБАВЛЕН НОВЫЙ ШАГ ДЛЯ УСТАНОВКИ DOCKER COMPOSE ---
+      - name: Install Docker Compose
+        uses: docker/setup-qemu-action@v3
+        with:
+          version: 'latest'
+
       - name: Start services
         run: docker-compose -f docker-compose.yml up -d --build
 
