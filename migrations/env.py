@@ -1,130 +1,103 @@
 # migrations/env.py
-import asyncio
+from __future__ import annotations
+
 import os
+import sys
+from pathlib import Path
 from logging.config import fileConfig
 
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import pool, text  # <-- ДОБАВЛЕН ИМПОРТ text
 from alembic import context
+from sqlalchemy import create_engine, text, pool
 
-
-# Загружаем URL БД из переменной окружения
-DB_URL = os.getenv(
-    "DATABASE_URL", "postgresql+asyncpg://game:gamepwd@localhost:5432/game"
-)
-
-# --- КОНФИГУРАЦИЯ ---
-# Добавьте сюда новые схемы по мере их появления
-# Ключ - имя схемы, значение - имя таблицы версий для этой схемы
-SCHEMA_VERSION_TABLES = {
-    "auth": "alembic_version_auth",
-}
-
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# --- Alembic config ---
 config = context.config
-
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
+if config.config_file_name:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None  # Автогенерация пока не используется
+# --- PYTHONPATH к корню проекта, чтобы подтянуть модели ---
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# --- Импорт metadata и моделей (чтобы autogenerate видел таблицы) ---
+from libs.domain.orm.base import Base  # noqa: E402,F401
+# важно импортировать модули с моделями
+from libs.domain.orm.auth import account, credentials, refresh_token  # noqa: F401
+
+target_metadata = Base.metadata
+
+# --- URL БД: делаем sync-URL для Alembic ---
+db_url = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://game:gamepwd@localhost:5432/game",
+)
+# если был asyncpg – переключаемся на psycopg2
+if "+asyncpg" in db_url:
+    db_url = db_url.replace("+asyncpg", "+psycopg2")
+DB_URL_SYNC = os.getenv("ALEMBIC_DB_URL", db_url)
+
+# --- Схема и таблица версий ---
+DB_SCHEMA = os.getenv("DB_SCHEMA") or context.get_x_argument(as_dictionary=True).get("schema", "auth")
+SCHEMA_VERSION_TABLES = {
+    "auth": "alembic_version_auth",
+    # сюда позже добавишь другие схемы: "billing": "alembic_version_billing", ...
+}
+VERSION_TABLE = SCHEMA_VERSION_TABLES.get(DB_SCHEMA, "alembic_version")
+
+
+def _bootstrap_schema_and_version_table(conn):
+    """Создаём схему/extension/таблицу версий вне транзакции Alembic (AUTOCOMMIT)."""
+    conn.exec_driver_sql(f'CREATE SCHEMA IF NOT EXISTS "{DB_SCHEMA}"')
+    # extension можно опционально убрать, если уже поставил руками
+    conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS citext")
+    conn.exec_driver_sql(
+        f'CREATE TABLE IF NOT EXISTS "{DB_SCHEMA}".{VERSION_TABLE} ('
+        "version_num VARCHAR(32) PRIMARY KEY)"
+    )
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-    Calls to context.execute() here emit the given string to the
-    script output.
-    """
-    # В оффлайн-режиме используем URL из переменной окружения
     context.configure(
-        url=DB_URL,
+        url=DB_URL_SYNC,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        # Для мульти-схемного подхода нужно будет передавать версию
-        version_table=get_version_table_from_cli(),
+        include_schemas=True,
+        version_table=VERSION_TABLE,
+        version_table_schema=DB_SCHEMA,
+        compare_type=True,
+        compare_server_default=True,
     )
-
     with context.begin_transaction():
         context.run_migrations()
 
 
-# --- ИСПРАВЛЕНИЕ ЗДЕСЬ: делаем функцию синхронной ---
-def do_run_migrations(connection):
-    # Получаем имя схемы из аргументов командной строки
-    schema = context.get_x_argument(as_dictionary=True).get("schema")
-    if not schema or schema not in SCHEMA_VERSION_TABLES:
-        raise ValueError(
-            f"Необходимо указать схему через -x schema=<schema_name>. "
-            f"Доступные схемы: {', '.join(SCHEMA_VERSION_TABLES.keys())}"
+def run_migrations_online() -> None:
+    engine = create_engine(DB_URL_SYNC, poolclass=pool.NullPool, future=True)
+
+    # Bootstrap в AUTOCOMMIT, чтобы это не откатывалось с ревизией
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as raw_conn:
+        _bootstrap_schema_and_version_table(raw_conn)
+
+    # Основной запуск миграций в обычной транзакции
+    with engine.connect() as connection:
+        # подстрахуемся, чтобы схемы искались корректно
+        connection.exec_driver_sql(f'SET search_path TO "{DB_SCHEMA}", public')
+
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            compare_type=True,
+            compare_server_default=True,
+            version_table=VERSION_TABLE,
+            version_table_schema=DB_SCHEMA,
         )
-
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: оборачиваем строку в text() ---
-    connection.execute(text(f'SET search_path TO "{schema}", public'))
-    # -----------------------------------------------------
-
-    # Устанавливаем имя таблицы версий для данной схемы
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        version_table=SCHEMA_VERSION_TABLES[schema],
-        include_schemas=True,  # Важно для работы со схемами
-    )
-
-    context.run_migrations()
-
-
-# -----------------------------------------------------
-
-
-async def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-    """
-    connectable = create_async_engine(
-        DB_URL,
-        poolclass=pool.NullPool,
-        future=True,
-    )
-
-    async with connectable.connect() as connection:
-        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: передаем синхронную функцию ---
-        await connection.run_sync(do_run_migrations)
-        # ------------------------------------------------------
-
-
-# --- Helpers ---
-def get_version_table_from_cli() -> str:
-    """
-    Получает имя таблицы версий из аргументов CLI.
-    Используется в offline режиме.
-    """
-    schema = context.get_x_argument(as_dictionary=True).get("schema")
-    if not schema or schema not in SCHEMA_VERSION_TABLES:
-        raise ValueError(
-            f"Необходимо указать схему через -x schema=<schema_name>. "
-            f"Доступные схемы: {', '.join(SCHEMA_VERSION_TABLES.keys())}"
-        )
-    return SCHEMA_VERSION_TABLES[schema]
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    asyncio.run(run_migrations_online())
+    run_migrations_online()

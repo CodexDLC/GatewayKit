@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from libs.domain.orm.base import Base
 from .enums import AccountStatus, AccountRole
 
+
 if TYPE_CHECKING:
     from .credentials import Credentials
     from .refresh_token import RefreshToken

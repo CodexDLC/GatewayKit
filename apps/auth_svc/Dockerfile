@@ -27,8 +27,11 @@ COPY apps ./apps
 
 # --- ДОБАВЛЕНИЕ ДЛЯ ALEMBIC ---
 # Копируем alembic.ini и папку с миграциями
-COPY alembic.ini .
-COPY migrations ./migrations
+# внутри образа
+COPY migrations /app/migrations
+COPY alembic.ini /app/alembic.ini
+ENV ALEMBIC_CONFIG=/app/alembic.ini
+
 # -----------------------------
 
 RUN pip install .

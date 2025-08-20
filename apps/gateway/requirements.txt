@@ -23,6 +23,7 @@ colorlog
 SQLAlchemy
 asyncpg
 redis
+alembic
 bcrypt
 
 # --- Test Dependencies ---

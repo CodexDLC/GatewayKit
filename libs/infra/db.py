@@ -1,3 +1,4 @@
+# libs/infra/db.py
 from __future__ import annotations
 
 import os
@@ -5,7 +6,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from sqlalchemy import text
+from sqlalchemy import text, event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -16,109 +17,65 @@ from sqlalchemy.pool import NullPool
 
 log = logging.getLogger(__name__)
 
-# -----------------------------------------------------------------------------
-# Конфиг
-# -----------------------------------------------------------------------------
+# --- ENV ---
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    # пример: postgresql+asyncpg://user:pass@host:5432/dbname
     "postgresql+asyncpg://game:gamepwd@localhost:5432/game",
 )
-DB_ECHO = os.getenv("DB_ECHO", "0") in {"1", "true", "True", "yes", "YES"}
+DB_SCHEMA = os.getenv("DB_SCHEMA", "auth")
+DB_ECHO = os.getenv("DB_ECHO", "0").lower() in {"1", "true", "yes"}
 
-# -----------------------------------------------------------------------------
-# Engine / Session
-# -----------------------------------------------------------------------------
-
-# --- НОВЫЙ БЛОК ---
-# Определяем search_path на основе переменной окружения
-# Это позволит сервисам работать с нужной схемой по умолчанию
-DB_SCHEMA = os.getenv("DB_SCHEMA", "public")
+# --- ENGINE ---
+# asyncpg понимает server_settings → задаём search_path сразу.
 connect_args = {"server_settings": {"search_path": f"{DB_SCHEMA},public"}}
-# -----------------
 
 engine: AsyncEngine = create_async_engine(
     DATABASE_URL,
     echo=DB_ECHO,
-    poolclass=NullPool,  # в контейнерах обычно без пула; при необходимости — заменить на пул
     future=True,
-    connect_args=connect_args,  # <-- ДОБАВЛЕНО
+    poolclass=NullPool,        # при необходимости поменяйте на пул
+    pool_pre_ping=True,
+    connect_args=connect_args,
 )
 
-# фабрика сессий (используйте её в DI или напрямую через get_db_session)
-AsyncSessionLocal = async_sessionmaker(
+# Страховка для драйверов без server_settings (или если его отключили)
+@event.listens_for(engine.sync_engine, "connect")
+def _set_search_path(dbapi_conn, _):  # type: ignore[no-untyped-def]
+    try:
+        cur = dbapi_conn.cursor()
+        cur.execute(f'SET search_path TO "{DB_SCHEMA}", public')
+        cur.close()
+    except Exception:  # не мешаем подключению, просто логируем
+        log.debug("Could not set search_path on connect", exc_info=True)
+
+# --- SESSION FACTORY ---
+SessionFactory = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,
 )
 
-
-# -----------------------------------------------------------------------------
-# Сессии
-# -----------------------------------------------------------------------------
+# --- PUBLIC API ---
 @asynccontextmanager
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Основной способ получить сессию.
-    Использует общий AsyncSessionLocal (рекомендуется).
-    """
-    session: AsyncSession = AsyncSessionLocal()
+    session: AsyncSession = SessionFactory()
     try:
         yield session
     finally:
         await session.close()
 
-
-@asynccontextmanager
-async def get_db_session_no_cache() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Альтернативный способ — создаёт отдельную фабрику на лету.
-    Использовать редко (например, для отладки/особых нужд).
-    """
-    _local = async_sessionmaker(
-        bind=engine, class_=AsyncSession, expire_on_commit=False
-    )
-    session: AsyncSession = _local()
-    try:
-        yield session
-    finally:
-        await session.close()
-
-
-def get_db_session_orm() -> async_sessionmaker[AsyncSession]:
-    """
-    Возвращает фабрику сессий (например, для фоновых задач).
-    """
-    return AsyncSessionLocal
-
-
-# -----------------------------------------------------------------------------
-# Диагностика / сырой доступ
-# -----------------------------------------------------------------------------
 async def check_db_connection() -> bool:
-    """
-    Лёгкая проверка доступности БД.
-    """
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
         return True
-    except Exception as e:
-        log.exception("DB check failed: %s", e)
+    except Exception:
+        log.exception("DB readiness check failed")
         return False
 
-
-@asynccontextmanager
-async def get_raw_connection():
-    """
-    Даёт доступ к driver-level соединению (asyncpg Connection).
-    Использовать только при необходимости (bulk/copy и т.п.).
-    """
-    async with engine.connect() as conn:
-        # conn – AsyncConnection (SQLAlchemy); ниже — «сырое» asyncpg-соединение
-        raw = await conn.get_raw_connection()  # type: ignore[attr-defined]
-        try:
-            yield raw
-        finally:
-            # raw закрывается вместе с conn при выходе из контекста
-            pass
+__all__ = [
+    "engine",
+    "SessionFactory",
+    "get_db_session",
+    "check_db_connection",
+]

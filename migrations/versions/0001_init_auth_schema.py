@@ -1,11 +1,3 @@
-"""init_auth_schema
-
-Revision ID: 0001
-Revises:
-Create Date: 2025-08-19 23:00:00.000000
-
-"""
-
 from typing import Sequence, Union
 
 from alembic import op
