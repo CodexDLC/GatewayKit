@@ -6,8 +6,6 @@ from logging.config import fileConfig
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import pool, text # <-- ДОБАВЛЕН ИМПОРТ text
 from alembic import context
-from alembic.runtime.environment import EnvironmentContext, MigrationContext
-from alembic.config import Config
 
 
 # Загружаем URL БД из переменной окружения

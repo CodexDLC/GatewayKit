@@ -13,7 +13,7 @@ from libs.domain.orm.auth import Account
 from libs.domain.dto.auth import RegisterRequest, IssueTokenRequest
 from libs.app.errors import ErrorCode
 from libs.infra.central_redis_client import CentralRedisClient
-from ..db.auth_repository import AuthRepository
+from ..db.auth_repository import AuthRepository, revoke_token
 from ..utils.password_manager import PasswordManager
 from ..utils.jwt_manager import JwtManager
 # --- ИСПРАВЛЕННЫЙ ИМПОРТ ---
@@ -70,7 +70,7 @@ class AuthService:
                 return None, ErrorCode.INTERNAL_ERROR
 
     async def issue_token(self, dto: IssueTokenRequest) -> tuple[dict | None, ErrorCode | None]:
-        """Выдает пару токенов по логину/паролю с защитой от брутфорса."""
+        """Выдает пару токенов по логину/паролю с защитой от bruteforce."""
 
         # --- НАЧАЛО: ЛОГИКА ЗАЩИТЫ ОТ БРУТФОРСА ---
         ban_key = key_auth_ban(dto.username)
@@ -113,7 +113,7 @@ class AuthService:
             return response_data, None
 
     async def refresh_token(self, refresh_token_str: str) -> tuple[dict | None, ErrorCode | None]:
-        """Обновляет пару токенов по refresh-токену."""
+        """Обновляет пару токенов по refresh-token."""
         payload = self.jwt_manager.decode_token(refresh_token_str)
         if not payload or not payload.get("jti"):
             return None, ErrorCode.AUTH_REFRESH_INVALID
@@ -130,7 +130,7 @@ class AuthService:
             if old_token.token_hash != expected_hash:
                 return None, ErrorCode.AUTH_REFRESH_INVALID
 
-            await repo.revoke_token(old_token)
+            await revoke_token(old_token)
 
 
             _access_token, response_data = await self.issue_token_pair(repo, old_token.account)
@@ -150,7 +150,7 @@ class AuthService:
             jti = uuid.UUID(payload["jti"])
             token_to_revoke = await repo.get_refresh_token_by_jti(jti)
             if token_to_revoke:
-                await repo.revoke_token(token_to_revoke)
+                await revoke_token(token_to_revoke)
                 await session.commit()
             return None
 
@@ -173,7 +173,7 @@ class AuthService:
             expires_delta=self.refresh_token_expires
         )
 
-        # 3. Сохраняем хеш рефреш-токена в БД
+        # 3. Сохраняем хеш refresh-токена в БД
         await repo.create_refresh_token(
             account_id=account.id,
             jti=jti,

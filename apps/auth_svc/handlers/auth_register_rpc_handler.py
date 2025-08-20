@@ -2,7 +2,6 @@
 from __future__ import annotations
 from libs.domain.dto.auth import RegisterRequest, RegisterResponse
 from libs.domain.dto.rpc import RpcResponse
-from libs.app.errors import ErrorCode
 from ..services.auth_service import AuthService
 
 

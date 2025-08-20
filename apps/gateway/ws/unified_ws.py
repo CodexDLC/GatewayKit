@@ -1,7 +1,6 @@
 # apps/gateway/ws/unified_ws.py
 from __future__ import annotations
 import asyncio
-import json
 import uuid
 from typing import Optional
 
@@ -16,8 +15,7 @@ from libs.utils.logging_setup import app_logger as logger
 from apps.gateway.dependencies import get_message_bus, get_client_connection_manager, get_settings
 from apps.gateway.config.setting_gateway import GatewaySettings
 
-from libs.domain.dto.ws import WSHelloFrame, WSErrorFrame, WSPongFrame
-from libs.domain.dto.errors import ErrorDTO
+from libs.domain.dto.ws import WSHelloFrame, WSPongFrame
 
 router = APIRouter(tags=["Unified WebSocket"])
 

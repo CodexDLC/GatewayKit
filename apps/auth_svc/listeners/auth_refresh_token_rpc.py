@@ -1,6 +1,6 @@
 # apps/auth_svc/listeners/auth_refresh_token_rpc.py
 from __future__ import annotations
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from pydantic import ValidationError
 

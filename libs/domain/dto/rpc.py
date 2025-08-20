@@ -1,7 +1,7 @@
 # libs/domain/dto/rpc.py
 from __future__ import annotations
-from typing import TypeVar, Generic, Optional, Any
-from pydantic import BaseModel, Field
+from typing import TypeVar, Generic, Optional
+from pydantic import BaseModel
 
 PayloadT = TypeVar("PayloadT")
 

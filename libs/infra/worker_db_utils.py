@@ -1,14 +1,12 @@
 # game_server/Logic/InfrastructureLogic/app_post/session_managers/worker_db_utils.py
 
 from contextlib import asynccontextmanager
-import logging # Добавлено для типизации logger
-from typing import AsyncGenerator, Type # Добавлен Type
+from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Используем существующую фабрику сессий из db_instance.py
-from game_server.Logic.InfrastructureLogic.db_instance import AsyncSessionLocal
-# Используем ваш уникальный логгер
-from game_server.config.logging.logging_setup import app_logger as logger
+from libs.infra.db import AsyncSessionLocal
+
+from libs.utils.logging_setup import app_logger as logger
 
 
 @asynccontextmanager

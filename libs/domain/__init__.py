@@ -1,8 +1,14 @@
-# package placeholder
-# Упрощённые реэкспорты
-from .dto.base import BaseMessage, MetaInfo, ClientInfo, TraceInfo
-from .dto.errors import ErrorDTO
+from .dto.base import (
+    BaseMessage as BaseMessage,
+    MetaInfo as MetaInfo,
+    ClientInfo as ClientInfo,
+    TraceInfo as TraceInfo,
+)
+from .dto.errors import ErrorDTO as ErrorDTO
 from .dto.enums import (
-    WSClientType, WSServerType,
-    TransportType, BackendStatus, DeliveryMode
+    WSClientType as WSClientType,
+    WSServerType as WSServerType,
+    TransportType as TransportType,
+    BackendStatus as BackendStatus,
+    DeliveryMode as DeliveryMode,
 )

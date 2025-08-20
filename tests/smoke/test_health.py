@@ -1,16 +1,15 @@
 # tests/smoke/test_health.py
 import httpx
-import pytest
 
-# Используем фикстуры с правильными URL
-def test_gateway_health_check(gateway_api_url: str):
+
+def test_gateway_health_check():
     """Проверяет, что Gateway здоров."""
-    # Убираем /v1, так как health-check в корне
-    base_url = gateway_api_url.replace("/v1", "")
-    response = httpx.get(f"{base_url}/health/ready")
+    # Тест бежит внутри gateway, обращаемся по localhost
+    response = httpx.get("http://localhost:8000/health/ready")
     assert response.status_code == 200
     data = response.json()
     assert data["ready"] is True
+    assert data["dependencies"]["rabbitmq"] is True
 
 def test_auth_svc_health_check(auth_svc_health_url: str):
     """Проверяет, что Auth Service здоров."""
@@ -18,3 +17,6 @@ def test_auth_svc_health_check(auth_svc_health_url: str):
     assert response.status_code == 200
     data = response.json()
     assert data["ready"] is True
+    assert data["dependencies"]["rabbitmq"] is True
+    assert data["dependencies"]["postgres"] is True
+    assert data["dependencies"]["redis"] is True

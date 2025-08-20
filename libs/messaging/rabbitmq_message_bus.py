@@ -12,12 +12,13 @@ from urllib.parse import urlparse
 from libs.utils.logging_setup import app_logger as logger
 
 try:
-    # Пытаемся использовать orjson для быстрой сериализации
     import orjson
-    _dumps = lambda o: orjson.dumps(o)
+    def _dumps(o):
+        return orjson.dumps(o)
 except ImportError:
-    # Откатываемся на стандартный json, если orjson не установлен
-    _dumps = lambda o: json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    import json
+    def _dumps(o):
+        return json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 import aio_pika
 from aio_pika.abc import AbstractIncomingMessage, AbstractRobustChannel

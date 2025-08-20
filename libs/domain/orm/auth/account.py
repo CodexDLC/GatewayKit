@@ -8,10 +8,7 @@ from sqlalchemy import (
     String,
     Boolean,
     Enum,
-    func,
-    Table,
-    Column,
-    ForeignKey,
+    func
 )
 from sqlalchemy.dialects.postgresql import JSONB, CITEXT
 from sqlalchemy.orm import Mapped, mapped_column, relationship

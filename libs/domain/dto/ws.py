@@ -1,16 +1,13 @@
 from __future__ import annotations
 from typing import Optional, Dict, Any, Union, Annotated, Literal
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from .base import BaseMessage
 from .errors import ErrorDTO
 
-# Вместо const=True — используем Literal[...] и дискриминатор "type"
-# Также фиксируем статусы через Literal, без regex.
 
 ServerEventStatus = Literal["ok", "update", "final"]
 
-# --------- WS: клиент -> сервер (discriminated union по полю "type")
 
 class WSCommandFrame(BaseMessage):
     type: Literal["command"] = "command"

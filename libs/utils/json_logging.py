@@ -2,9 +2,7 @@
 import json
 import logging
 import re
-from typing import List
 
-# --- ФИЛЬТР ДЛЯ МАСКИРОВАНИЯ СЕКРЕТОВ ---
 
 MASKED_KEYS = ["password", "token", "access_token", "refresh_token", "authorization"]
 MASKED_PATTERN = re.compile(r"(\"?)(" + "|".join(MASKED_KEYS) + r")(\"?\s*[:=]\s*[\"'])(.*?)([\"'])", re.IGNORECASE)

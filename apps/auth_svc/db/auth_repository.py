@@ -1,6 +1,8 @@
 # apps/auth_svc/db/auth_repository.py
 from __future__ import annotations
-from datetime import datetime
+
+import uuid
+from datetime import datetime, timezone
 import logging
 from typing import Optional
 
@@ -12,6 +14,11 @@ from libs.domain.orm.auth import Account, Credentials, RefreshToken
 from libs.domain.dto.auth import RegisterRequest
 
 log = logging.getLogger(__name__)
+
+
+async def revoke_token(token: RefreshToken) -> None:
+    """Помечает токен как отозванный."""
+    token.revoked_at = datetime.now(timezone.utc)
 
 
 class AuthRepository:
@@ -54,16 +61,13 @@ class AuthRepository:
         )
 
         # Создаем запись с паролем
-        new_credentials = Credentials(
-            password_hash=password_hash,
-            account=new_account  # Связываем с аккаунтом
-        )
+        self.session.add(Credentials(password_hash=password_hash, account=new_account))
 
         self.session.add(new_account)
         # credentials добавится автоматически через relationship
 
         # SQLAlchemy сама обработает вставку в обе таблицы в правильном порядке.
-        # commit будет выполнен декоратором @transactional в сервисном слое.
+        # Commit будет выполнен декоратором @transactional в сервисном слое.
 
         return new_account
 
@@ -111,6 +115,3 @@ class AuthRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def revoke_token(self, token: RefreshToken) -> None:
-        """Помечает токен как отозванный."""
-        token.revoked_at = datetime.now(timezone.utc)

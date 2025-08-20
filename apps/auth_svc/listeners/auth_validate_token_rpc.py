@@ -37,7 +37,7 @@ class AuthValidateTokenRpc(BaseMicroserviceListener):
             message_bus=message_bus,
             prefetch=prefetch,
             consumer_count=consumer_count,
-            envelope_model=None,  # валидируем ниже как DTO
+            envelope_model=None,
         )
         self._handler = handler
 

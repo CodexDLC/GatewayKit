@@ -44,8 +44,8 @@ async def service_lifespan(
         if listener_factories:
             listener_tasks = [factory(bus, container) for factory in listener_factories]
             listeners = await asyncio.gather(*listener_tasks)
-            for l in listeners:
-                await l.start()
+            for listener in reversed(listeners):
+                await listener.start()
             log.info(f"Запущено {len(listeners)} слушателей.")
         else:
             log.info("Слушатели не настроены для этого сервиса.")
