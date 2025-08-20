@@ -85,48 +85,43 @@ jobs:
           echo "LOG_FORMATTER=json" >> .env
 
       # ДОБАВЛЕНО: Этот шаг установит Docker Compose на сервер
-      - name: Set up Docker Compose
-        uses: docker/setup-qemu-action@v3
-        with:
-          version: 'latest'
+      - name: Show Docker versions
+        run: |
+          docker --version
+          docker compose version
 
       - name: Start services
-        run: docker-compose -f docker-compose.yml up -d --build
+        run: docker compose -f docker-compose.yml up -d --build
 
       - name: Wait for services to be healthy
-        # Простой скрипт ожидания. В проде можно использовать dockerize или wait-for-it.sh
+        shell: bash
         run: |
           echo "Waiting for services..."
-          sleep 15 # Даем время на запуск
           for i in {1..20}; do
-            if curl -s http://localhost:8000/health/ready && curl -s http://localhost:8001/health/ready; then
+            if curl -sf http://localhost:8000/health/ready && curl -sf http://localhost:8001/health/ready; then
               echo "All services are healthy!"
-              break
+              exit 0
             fi
             echo "Services not ready yet, waiting... ($i/20)"
             sleep 5
           done
-          # Проверяем еще раз и падаем, если таймаут
-          curl -f http://localhost:8000/health/ready
-          curl -f http://localhost:8001/health/ready
+          echo "Healthcheck timeout"; exit 1
 
       - name: Run Pytest
-        # Запускаем тесты внутри одного из контейнеров, где есть все зависимости
-        # Либо можно создать отдельный test-runner контейнер
-        run: docker-compose exec gateway pytest tests/
+        run: docker compose exec -T gateway pytest -q tests/
 
       - name: Show logs on failure
-        if: failure() # Этот шаг выполняется, только если предыдущие упали
+        if: failure()
         run: |
           echo "--- Gateway Logs ---"
-          docker-compose logs --tail=500 gateway
+          docker compose logs --tail=500 gateway
           echo "--- Auth Service Logs ---"
-          docker-compose logs --tail=500 auth_svc
+          docker compose logs --tail=500 auth_svc
           echo "--- Postgres Logs ---"
-          docker-compose logs --tail=200 postgres
+          docker compose logs --tail=200 postgres
           echo "--- RabbitMQ Logs ---"
-          docker-compose logs --tail=200 rabbitmq
+          docker compose logs --tail=200 rabbitmq
 
       - name: Stop services
-        if: always() # Этот шаг выполняется всегда, даже если тесты упали
-        run: docker-compose down -v
+        if: always()
+        run: docker compose down -v
