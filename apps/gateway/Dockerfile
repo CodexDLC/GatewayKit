@@ -31,10 +31,7 @@ COPY tests ./tests
 RUN pip install .
 
 # 2. Создаем папку логов и меняем владельца всей рабочей директории
-RUN mkdir -p /app/logs
-RUN chown -R 1001:1001 /app
-# --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
+RUN mkdir -p /app/logs && chmod a+rwx /app/logs
 EXPOSE 8000
 USER 1001
 

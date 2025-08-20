@@ -34,8 +34,7 @@ COPY migrations ./migrations
 RUN pip install .
 
 # логи
-RUN mkdir -p /app/logs && chown -R 1001:1001 /app/logs
-
+RUN mkdir -p /app/logs && chmod a+rwx /app/logs
 EXPOSE 8001
 USER 1001
 
