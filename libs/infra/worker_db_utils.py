@@ -10,9 +10,9 @@ from libs.utils.logging_setup import app_logger as logger
 
 
 @asynccontextmanager
-async def get_worker_db_session() -> (
-    AsyncGenerator[AsyncSession, None]
-):  # 🔥 ИЗМЕНЕНИЕ: repository_manager удален
+async def get_worker_db_session() -> AsyncGenerator[
+    AsyncSession, None
+]:  # 🔥 ИЗМЕНЕНИЕ: repository_manager удален
     """
     Предоставляет асинхронную сессию SQLAlchemy для использования в ARQ воркерах
     с управлением транзакцией (commit/rollback) и автоматическим закрытием.
