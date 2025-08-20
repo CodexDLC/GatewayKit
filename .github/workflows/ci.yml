@@ -1,0 +1,126 @@
+# .github/workflows/ci.yml
+
+name: Core CI
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ] # Ветки, при пуше в которые запускается CI
+  pull_request:
+    branches: [ "main", "master", "develop" ] # А также при создании Pull Request в эти ветки
+
+jobs:
+  # --- 1. Быстрые проверки: Линтинг и Форматирование ---
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install ruff
+
+      - name: Run Ruff Linter
+        run: ruff check .
+
+      - name: Run Ruff Formatter Check
+        run: ruff format --check .
+
+  # --- 2. Проверка типов ---
+  type-check:
+    name: Type Checking (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        # Устанавливаем зависимости из ОБОИХ сервисов + mypy
+        run: |
+          pip install mypy
+          pip install -r apps/auth_svc/requirements.txt
+          pip install -r apps/gateway/requirements.txt
+
+      - name: Run mypy
+        # Проверяем только наш код в libs и apps
+        run: mypy libs apps
+
+  # --- 3. Сборка Docker-образов ---
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint, type-check] # Запускается только если быстрые проверки прошли
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build gateway image
+        run: docker build -t gateway-ci -f apps/gateway/Dockerfile .
+
+      - name: Build auth_svc image
+        run: docker build -t auth_svc-ci -f apps/auth_svc/Dockerfile .
+
+  # --- 4. Главный этап: Интеграционные и Smoke-тесты ---
+  test:
+    name: Integration & Smoke Tests
+    runs-on: ubuntu-latest
+    needs: build # Запускается только после успешной сборки
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file for tests
+        run: |
+          cp infra/.env.sample .env
+          echo "LOG_FORMATTER=json" >> .env
+
+      - name: Start services
+        run: docker-compose -f docker-compose.yml up -d --build
+
+      - name: Wait for services to be healthy
+        # Простой скрипт ожидания. В проде можно использовать dockerize или wait-for-it.sh
+        run: |
+          echo "Waiting for services..."
+          sleep 15 # Даем время на запуск
+          for i in {1..20}; do
+            if curl -s http://localhost:8000/health/ready && curl -s http://localhost:8001/health/ready; then
+              echo "All services are healthy!"
+              break
+            fi
+            echo "Services not ready yet, waiting... ($i/20)"
+            sleep 5
+          done
+          # Проверяем еще раз и падаем, если таймаут
+          curl -f http://localhost:8000/health/ready
+          curl -f http://localhost:8001/health/ready
+
+      - name: Run Pytest
+        # Запускаем тесты внутри одного из контейнеров, где есть все зависимости
+        # Либо можно создать отдельный test-runner контейнер
+        run: docker-compose exec gateway pytest tests/
+
+      - name: Show logs on failure
+        if: failure() # Этот шаг выполняется, только если предыдущие упали
+        run: |
+          echo "--- Gateway Logs ---"
+          docker-compose logs --tail=500 gateway
+          echo "--- Auth Service Logs ---"
+          docker-compose logs --tail=500 auth_svc
+          echo "--- Postgres Logs ---"
+          docker-compose logs --tail=200 postgres
+          echo "--- RabbitMQ Logs ---"
+          docker-compose logs --tail=200 rabbitmq
+
+      - name: Stop services
+        if: always() # Этот шаг выполняется всегда, даже если тесты упали
+        run: docker-compose down -v

@@ -25,13 +25,17 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY pyproject.toml .
 COPY libs ./libs
 COPY apps ./apps
+# --- НАЧАЛО ИЗМЕНЕНИЙ ---
+COPY tests ./tests
+
 RUN pip install .
 
-RUN mkdir -p /app/logs && chown -R 1001:1001 /app/logs
+# 2. Создаем папку логов и меняем владельца всей рабочей директории
+RUN mkdir -p /app/logs
+RUN chown -R 1001:1001 /app
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 EXPOSE 8000
 USER 1001
 
-# --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-# Запускаем новый, правильный файл gateway_main.py
 CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","-w","1","-b","0.0.0.0:8000","apps.gateway.gateway_main:app"]

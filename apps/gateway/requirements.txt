@@ -23,3 +23,9 @@ colorlog
 SQLAlchemy
 asyncpg
 redis
+bcrypt
+
+# --- Test Dependencies ---
+pytest
+httpx
+pytest-dependency

@@ -25,3 +25,9 @@ asyncpg
 redis
 alembic
 bcrypt
+
+
+
+# --- Test Dependencies ---
+pytest
+httpx
