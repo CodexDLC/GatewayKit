@@ -9,39 +9,29 @@ import uuid
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
-# Переносим импорты наверх
+# Переносим все импорты наверх
 import aio_pika
 from aio_pika.abc import (
     AbstractIncomingMessage,
     AbstractRobustChannel,
     AbstractRobustConnection,
 )
-from aio_pika.exceptions import UnroutableError
+from aio_pika.exceptions import ConnectionClosed, ChannelClosed
 
 from .i_message_bus import IMessageBus, MessageHandler
 from libs.utils.logging_setup import app_logger as logger
 
-def dumps_orjson(o):
-    import orjson
-    return orjson.dumps(o)
-
-def dumps_json(o):
+def _dumps(o):
     return json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )
-
-try:
-    import orjson  # type: ignore
-    _dumps = dumps_orjson
-except ImportError:
-    _dumps = dumps_json
-
 
 class RabbitMQMessageBus(IMessageBus):
     """
     JSON-шина на RabbitMQ (aio-pika, publisher confirms).
     Реализует Direct Reply-to для RPC и publisher confirms для надежности.
     """
+
     def __init__(
         self,
         dsn: str,
@@ -90,6 +80,14 @@ class RabbitMQMessageBus(IMessageBus):
                 # Запускаем слушателя RPC-ответов после успешного подключения
                 await self._setup_reply_to_consumer()
                 return
+            except (ConnectionClosed, ChannelClosed) as e:
+                # Временно закрываем соединение, чтобы aio_pika мог переподключиться
+                await asyncio.sleep(backoff)
+                if deadline is not None and time.monotonic() >= deadline:
+                    logger.error(
+                        "bus: connect timeout after %s attempts: %s", attempt, e
+                    )
+                    raise
             except Exception as e:
                 if deadline is not None and time.monotonic() >= deadline:
                     logger.error(
@@ -163,8 +161,8 @@ class RabbitMQMessageBus(IMessageBus):
         name: str,
         *,
         durable: bool = True,
-        exclusive: bool = False,  # <-- ДОБАВЬТЕ
-        auto_delete: bool = False,  # <-- ДОБАВЬТЕ
+        exclusive: bool = False,
+        auto_delete: bool = False,
         arguments: Optional[Dict[str, Any]] = None,
         dead_letter_exchange: Optional[str] = None,
         dead_letter_routing_key: Optional[str] = None,
@@ -179,7 +177,6 @@ class RabbitMQMessageBus(IMessageBus):
         if max_priority:
             args["x-max-priority"] = int(max_priority)
 
-        # --- ПЕРЕДАЕМ НОВЫЕ АРГУМЕНТЫ В aio_pika ---
         await ch.declare_queue(
             name,
             durable=durable,
@@ -232,8 +229,6 @@ class RabbitMQMessageBus(IMessageBus):
         ch = await self._ensure()
         await ch.set_qos(prefetch_count=int(prefetch))
         queue = await ch.get_queue(queue_name, ensure=True)
-        # Просто передаем полученный handler дальше.
-        # aio_pika.consume ожидает именно такой тип, как мы определили в MessageHandler.
         await queue.consume(handler, no_ack=False)
 
     async def publish_rpc_response(
@@ -275,8 +270,7 @@ class RabbitMQMessageBus(IMessageBus):
             await exchange.publish(message, routing_key=routing_key, mandatory=True)
 
             return await asyncio.wait_for(future, timeout=self.RPC_TIMEOUT_MS / 1000.0)
-
-        except UnroutableError:
+        except aio_pika.exceptions.UnroutableError:
             logger.error(
                 "RPC message is unroutable. Exchange: %s, Routing key: %s",
                 exchange_name,
@@ -287,5 +281,4 @@ class RabbitMQMessageBus(IMessageBus):
             logger.warning("RPC call timed out for correlation_id: %s", corr_id)
             return None
         finally:
-            # --- ИСПРАВЛЕНИЕ: pop не асинхронный ---
             self._rpc_futures.pop(corr_id, None)

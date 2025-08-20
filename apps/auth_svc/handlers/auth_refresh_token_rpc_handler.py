@@ -3,7 +3,7 @@ from __future__ import annotations
 from libs.domain.dto.auth import RefreshTokenRequest, RefreshTokenResponse
 from libs.domain.dto.rpc import RpcResponse
 from ..services.auth_service import AuthService
-
+from typing import Dict, Any
 
 
 class AuthRefreshTokenRpcHandler:
@@ -19,5 +19,8 @@ class AuthRefreshTokenRpcHandler:
                 success=False, error_code=error, message="Failed to refresh token."
             )
 
-        # ИЗМЕНЕНИЕ: Явно приводим token_data к типу dict
-        return RpcResponse(success=True, data=RefreshTokenResponse(**token_data))
+        # ДОБАВЛЕНО: Проверка, что token_data не None
+        if token_data:
+            return RpcResponse(success=True, data=RefreshTokenResponse(**token_data))
+        else:
+            return RpcResponse(success=False, error_code="common.internal_error", message="Unexpected error.")

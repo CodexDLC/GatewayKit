@@ -11,7 +11,6 @@ class APIResponse(BaseModel, Generic[PayloadT]):
     data: Optional[PayloadT] = None
 
 
-# --- ИМЕНА ИЗМЕНЕНЫ ---
 class ApiLoginRequest(BaseModel):
     username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=64)]
     password: Annotated[str, StringConstraints(min_length=8)]

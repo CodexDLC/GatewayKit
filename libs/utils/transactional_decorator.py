@@ -1,7 +1,7 @@
 # libs/utils/transactional_decorator.py
 import functools
 import logging
-from typing import Callable, Any, Coroutine, TypeVar, ParamSpec, Optional
+from typing import Callable, Any, Coroutine, TypeVar, ParamSpec, Optional, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 P = ParamSpec("P")
@@ -32,7 +32,7 @@ def transactional(session_factory: Callable[[], AsyncSession]):
                     logger.debug(f"Транзакция открыта для метода {func.__name__}")
 
                     # ИЗМЕНЕНИЕ: Упрощенная передача аргументов для совместимости с Mypy
-                    result = await func(session, *args, **kwargs)
+                    result = await func(cast(AsyncSession, session), *args, **kwargs)
 
                     await session.commit()
                     logger.debug(
