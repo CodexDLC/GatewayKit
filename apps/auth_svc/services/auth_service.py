@@ -12,12 +12,19 @@ from asyncpg.exceptions import UniqueViolationError
 from libs.domain.orm.auth import Account
 from libs.domain.dto.auth import RegisterRequest, IssueTokenRequest
 from libs.app.errors import ErrorCode
+from libs.infra.central_redis_client import CentralRedisClient
 from ..db.auth_repository import AuthRepository
 from ..utils.password_manager import PasswordManager
 from ..utils.jwt_manager import JwtManager
+# --- ИСПРАВЛЕННЫЙ ИМПОРТ ---
+from libs.utils.redis_keys import key_auth_failed_attempts, key_auth_ban
 
 log = logging.getLogger(__name__)
 
+# --- КОНСТАНТЫ ДЛЯ БРУТФОРСА ---
+BRUTEFORCE_MAX_ATTEMPTS = int(os.getenv("REDIS_LOGIN_MAX_ATTEMPTS", "10"))
+BRUTEFORCE_LOCK_TTL_SEC = int(os.getenv("REDIS_TTL_LOGIN_BAN_SEC", "900"))  # 15 минут
+BRUTEFORCE_WINDOW_TTL_SEC = int(os.getenv("REDIS_TTL_LOGIN_WINDOW_SEC", "300")) # 5 минут
 
 class AuthService:
     """
@@ -25,27 +32,31 @@ class AuthService:
     """
 
     def __init__(
-            self,
-            session_factory: async_sessionmaker[AsyncSession],
-            jwt_manager: JwtManager,
-            password_manager: PasswordManager
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        jwt_manager: JwtManager,
+        password_manager: PasswordManager,
+        redis: CentralRedisClient
     ):
         self.session_factory = session_factory
         self.jwt_manager = jwt_manager
         self.password_manager = password_manager
+        self.redis = redis
         self.access_token_expires = timedelta(minutes=int(os.getenv("AUTH_ACCESS_TTL", "30")))
         self.refresh_token_expires = timedelta(days=int(os.getenv("AUTH_REFRESH_TTL", "14")))
 
     async def register(self, dto: RegisterRequest) -> tuple[Account | None, ErrorCode | None]:
-
         async with self.session_factory() as session:
             repo = AuthRepository(session)
             try:
-                if await repo.get_by_username(dto.username) or await repo.get_by_email(dto.email):
+                # ИСПРАВЛЕНИЕ: Приводим EmailStr к str
+                if await repo.get_by_username(dto.username) or await repo.get_by_email(str(dto.email)):
                     return None, ErrorCode.AUTH_USER_EXISTS
+
                 hashed_password = self.password_manager.hash_password(dto.password)
                 new_account = await repo.create_account(dto, hashed_password)
                 await session.commit()
+
                 return new_account, None
             except IntegrityError as e:
                 await session.rollback()
@@ -53,24 +64,48 @@ class AuthService:
                     return None, ErrorCode.AUTH_USER_EXISTS
                 log.exception("Database integrity error during registration.")
                 return None, ErrorCode.INTERNAL_ERROR
-            except Exception:
+            except Exception as e:  # ИСПРАВЛЕНИЕ: Ловим конкретную ошибку
                 await session.rollback()
-                log.exception("Unexpected error during registration.")
+                log.exception(f"Unexpected error during registration: {e}")
                 return None, ErrorCode.INTERNAL_ERROR
 
     async def issue_token(self, dto: IssueTokenRequest) -> tuple[dict | None, ErrorCode | None]:
-        """Выдает пару токенов по логину/паролю."""
+        """Выдает пару токенов по логину/паролю с защитой от брутфорса."""
+
+        # --- НАЧАЛО: ЛОГИКА ЗАЩИТЫ ОТ БРУТФОРСА ---
+        ban_key = key_auth_ban(dto.username)
+        if await self.redis.exists(ban_key):
+            log.warning(f"Bruteforce attempt rejected for banned user: {dto.username}")
+            return None, ErrorCode.AUTH_FORBIDDEN
+
+        attempts_key = key_auth_failed_attempts(dto.username)
+        # --- КОНЕЦ: ЛОГИКА ЗАЩИТЫ ОТ БРУТФОРСА ---
+
         async with self.session_factory() as session:
             repo = AuthRepository(session)
 
             account = await repo.get_by_username(dto.username)
-            if not account or not account.credentials or not self.password_manager.verify_password(dto.password,
-                                                                                                   account.credentials.password_hash):
+            if not account or not account.credentials or not self.password_manager.verify_password(dto.password, account.credentials.password_hash):
+
+                # --- НАЧАЛО: ОБРАБОТКА НЕУДАЧНОЙ ПОПЫТКИ ---
+                attempts = await self.redis.redis.incr(attempts_key)
+                if attempts == 1:
+                    await self.redis.redis.expire(attempts_key, BRUTEFORCE_WINDOW_TTL_SEC)
+
+                if attempts >= BRUTEFORCE_MAX_ATTEMPTS:
+                    await self.redis.set(ban_key, "1", ex=BRUTEFORCE_LOCK_TTL_SEC)
+                    await self.redis.delete(attempts_key)
+                    log.warning(
+                        f"User {dto.username} has been banned for {BRUTEFORCE_LOCK_TTL_SEC} seconds due to bruteforce.")
+                # --- КОНЕЦ: ОБРАБОТКА НЕУДАЧНОЙ ПОПЫТКИ ---
+
                 return None, ErrorCode.AUTH_INVALID_CREDENTIALS
 
+            # --- НАЧАЛО: СБРОС СЧЕТЧИКОВ ПРИ УСПЕХЕ ---
+            await self.redis.delete(attempts_key)
+            # --- КОНЕЦ: СБРОС СЧЕТЧИКОВ ПРИ УСПЕХЕ ---
 
             _access_token, response_data = await self.issue_token_pair(repo, account)
-
 
             await repo.set_last_login(account.id, datetime.now(timezone.utc))
             await session.commit()
@@ -78,7 +113,7 @@ class AuthService:
             return response_data, None
 
     async def refresh_token(self, refresh_token_str: str) -> tuple[dict | None, ErrorCode | None]:
-        """Обновляет пару токенов."""
+        """Обновляет пару токенов по refresh-токену."""
         payload = self.jwt_manager.decode_token(refresh_token_str)
         if not payload or not payload.get("jti"):
             return None, ErrorCode.AUTH_REFRESH_INVALID

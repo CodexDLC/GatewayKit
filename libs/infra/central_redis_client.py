@@ -1,7 +1,7 @@
 # libs/infra/central_redis_client.py
-
 import json
 import logging
+import os # <-- Добавлен импорт
 from typing import Any, Dict, List, Optional, Union
 import uuid
 import datetime
@@ -10,21 +10,25 @@ import redis.asyncio as redis_asyncio
 class CentralRedisClient:
     """
     Низкоуровневый клиент для взаимодействия с центральным Redis-сервером.
-    Использует redis-py (версии 5+) для асинхронной работы.
-    Этот клиент управляет собственным пулом подключений.
-    Все методы для работы со структурами данных используют JSON-сериализацию.
     """
     def __init__(
         self,
         redis_url: str,
         password: Optional[str] = None,
-        max_connections: int = 10
+        # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+        pool_size: int = int(os.getenv("REDIS_POOL_SIZE", "40")),
+        socket_timeout: int = int(os.getenv("REDIS_TIMEOUT_SEC", "2"))
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     ):
         self.logger = logging.getLogger("central_redis_client")
         self._redis_url = redis_url
         self._password = password
-        self.redis: Optional[redis_asyncio.Redis] = None # Для строковых операций
-        self.redis_raw: Optional[redis_asyncio.Redis] = None # Для байтовых/JSON операций
+        # --- ИЗМЕНЕНИЯ ---
+        self._pool_size = pool_size
+        self._socket_timeout = socket_timeout
+        # -----------------
+        self.redis: Optional[redis_asyncio.Redis] = None
+        self.redis_raw: Optional[redis_asyncio.Redis] = None
         self.logger.info("✨ CentralRedisClient инициализирован, ожидание подключения.")
 
     async def connect(self):
@@ -32,12 +36,18 @@ class CentralRedisClient:
         if self.redis is None:
             self.logger.info(f"🔧 Подключение к центральному Redis: {self._redis_url}...")
             try:
+                # --- ИСПОЛЬЗУЕМ НОВЫЕ ПАРАМЕТРЫ ---
                 self.redis = redis_asyncio.from_url(
                     self._redis_url, password=self._password, decode_responses=True,
-                    socket_timeout=5, socket_connect_timeout=5)
+                    max_connections=self._pool_size,
+                    socket_timeout=self._socket_timeout, socket_connect_timeout=self._socket_timeout
+                )
                 self.redis_raw = redis_asyncio.from_url(
                     self._redis_url, password=self._password, decode_responses=False,
-                    socket_timeout=5, socket_connect_timeout=5)
+                    max_connections=self._pool_size,
+                    socket_timeout=self._socket_timeout, socket_connect_timeout=self._socket_timeout
+                )
+                # ---------------------------------
                 await self.redis.ping()
                 await self.redis_raw.ping()
                 self.logger.info(f"✅ Подключение к центральному Redis успешно установлено.")

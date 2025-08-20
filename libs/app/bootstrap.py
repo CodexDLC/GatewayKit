@@ -6,21 +6,17 @@ from typing import Type, Callable, List, Optional, Awaitable
 from fastapi import FastAPI
 from pydantic_settings import BaseSettings
 
-from libs.app.logging_middleware import LoggingMiddleware
-from libs.infra.di import Container
+from .logging_middleware import LoggingMiddleware
+from libs.containers.auth_container import AuthContainer  # Уточняем тип для проверок
 from libs.messaging.i_message_bus import IMessageBus
 from libs.utils.logging_setup import app_logger as log
-from libs.app.health import create_readiness_router, liveness_check
+from libs.app.health import create_readiness_router
+from libs.infra.db import check_db_connection  # Импортируем проверку БД
 
 # Типы для фабрик
-ListenerFactory = Callable[[IMessageBus, Container], Awaitable]
+ListenerFactory = Callable[[IMessageBus, AuthContainer], Awaitable]
 TopologyDeclarator = Callable[[IMessageBus], Awaitable[None]]
-ContainerFactory = Callable[[], Awaitable[Container]]
-
-
-async def default_container_factory() -> Container:
-    """Фабрика DI-контейнера по умолчанию."""
-    return await Container().init()
+ContainerFactory = Callable[[], Awaitable[AuthContainer]]
 
 
 @asynccontextmanager
@@ -37,9 +33,7 @@ async def service_lifespan(
     log.info("Запуск сервиса...")
     listeners = []
     try:
-        # --- ИЗМЕНЕНИЕ: используем фабрику, переданную в функцию ---
         container = await container_factory()
-        # -----------------------------------------------------------
         app.state.container = container
         bus = container.bus
         log.info("DI-контейнер инициализирован.")
@@ -77,10 +71,10 @@ async def service_lifespan(
 def create_service_app(
         *,
         service_name: str,
-        container_factory: ContainerFactory = default_container_factory,
+        container_factory: ContainerFactory,
         topology_declarator: TopologyDeclarator,
         listener_factories: Optional[List[ListenerFactory]] = None,
-        settings_class: Optional[Type[BaseSettings]] = None,  # <-- ЭТОТ ПАРАМЕТР
+        settings_class: Optional[Type[BaseSettings]] = None,
         include_rest_routers: Optional[List] = None,
 ) -> FastAPI:
     """
@@ -95,22 +89,47 @@ def create_service_app(
 
     app = FastAPI(title=service_name, lifespan=_lifespan)
 
-    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
-    # Если передан класс настроек, создаем его экземпляр и сохраняем.
-    # Pydantic сам загрузит переменные из .env файла.
     if settings_class:
         app.state.settings = settings_class()
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     app.add_middleware(LoggingMiddleware)
 
+    # --- НАЧАЛО ИЗМЕНЕНИЙ: УМНЫЕ HEALTH CHECKS ---
+    readiness_checks = []
+
+    # 1. Проверка RabbitMQ (обязательна для всех)
     async def rmq_check():
         is_ready = await app.state.container.bus.is_connected()
         return "rabbitmq", is_ready
 
-    readiness_checks = [rmq_check]
+    readiness_checks.append(rmq_check())
 
-    app.include_router(create_readiness_router(readiness_checks))
+    # 2. Проверка PostgreSQL
+    async def db_check():
+        # Проверка будет вызвана только если у контейнера есть фабрика сессий
+        if hasattr(app.state.container, 'session_factory'):
+            is_ready = await check_db_connection()
+            return "postgres", is_ready
+        return None  # Сигнал, что проверка не нужна
+
+    readiness_checks.append(db_check())
+
+    # 3. Проверка Redis
+    async def redis_check():
+        # Проверка будет вызвана только если у контейнера есть клиент Redis
+        if hasattr(app.state.container, 'redis') and app.state.container.redis:
+            try:
+                is_ready = await app.state.container.redis.redis.ping()
+                return "redis", bool(is_ready)
+            except Exception:
+                return "redis", False
+        return None  # Сигнал, что проверка не нужна
+
+    readiness_checks.append(redis_check())
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+    # Фильтруем None значения перед передачей в роутер
+    app.include_router(create_readiness_router([check for check in readiness_checks if check is not None]))
 
     if include_rest_routers:
         for router_config in include_rest_routers:
