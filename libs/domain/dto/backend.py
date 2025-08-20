@@ -1,3 +1,4 @@
+# libs/domain/dto/backend.py
 from __future__ import annotations
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
@@ -53,7 +54,7 @@ class Recipient(BaseModel):
     Кому отправлять. Если не указан connection_id, гейтвей может слать во все активные соединения аккаунта.
     """
 
-    account_id: Optional[int] = None  # было Optional[str]
+    account_id: Optional[int] = None
     connection_id: Optional[str] = None
 
 

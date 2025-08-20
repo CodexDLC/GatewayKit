@@ -134,6 +134,7 @@ class CentralRedisClient:
         """Устанавливает строковое значение в хеше."""
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
+            return
 
         return await self.redis.hset(name, key, value)
 
@@ -178,6 +179,7 @@ class CentralRedisClient:
     async def set(self, key: str, value: Any, ex: Optional[int] = None):
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
+            return
 
         return await self.redis.set(key, value, ex=ex)
 
@@ -201,5 +203,6 @@ class CentralRedisClient:
     async def publish(self, channel: str, message: str):
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
+            return
 
         return await self.redis.publish(channel, message)

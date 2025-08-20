@@ -115,7 +115,8 @@ async def validate_token(
             ),
         )
 
-    return APIResponse[ApiValidateResponse](success=True, data=rpc_resp)
+    # ИЗМЕНЕНИЕ: Преобразование dict в DTO
+    return APIResponse[ApiValidateResponse](success=True, data=ApiValidateResponse(**rpc_resp))
 
 
 @router.post("/refresh", response_model=APIResponse[ApiRefreshTokenResponse])

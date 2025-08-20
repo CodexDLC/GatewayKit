@@ -18,9 +18,13 @@ class AuthRegisterRpcHandler:
                 success=False, error_code=error, message="Registration failed."
             )
 
-        return RpcResponse(
-            success=True,
-            data=RegisterResponse(
-                account_id=account.id, email=account.email, username=account.username
-            ),
-        )
+        # ДОБАВЛЕНО: Проверка на None
+        if account:
+            return RpcResponse(
+                success=True,
+                data=RegisterResponse(
+                    account_id=account.id, email=account.email, username=account.username
+                ),
+            )
+        else:
+            return RpcResponse(success=False, error_code="auth.internal_error", message="Account not created.")

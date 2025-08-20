@@ -1,9 +1,8 @@
-# game_server/Logic/InfrastructureLogic/app_post/utils/transactional_decorator.py
-
+# libs/utils/transactional_decorator.py
 import functools
 import logging
 from typing import Callable, Any, Coroutine, TypeVar, ParamSpec, Optional
-import inspect  # <--- ДОБАВЛЕН ИМПОРТ INSPECT
+import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 P = ParamSpec("P")
@@ -24,7 +23,7 @@ def transactional(session_factory: Callable[[], AsyncSession]):
     """
 
     def decorator(
-        func: Callable[P, Coroutine[Any, Any, R]],
+            func: Callable[P, Coroutine[Any, Any, R]],
     ) -> Callable[P, Coroutine[Any, Any, R]]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -33,33 +32,18 @@ def transactional(session_factory: Callable[[], AsyncSession]):
                 async with session_factory() as session:
                     logger.debug(f"Транзакция открыта для метода {func.__name__}")
 
-                    # Определяем, является ли 'func' методом экземпляра (т.е. первый аргумент будет 'self')
-                    # inspect.ismethod(func) работает для bound methods
-                    # Для unbound methods, которые вызываются через instance.method(),
-                    # args[0] будет инстансом.
-                    is_instance_method = inspect.ismethod(func) or (
-                        len(args) > 0
-                        and hasattr(args[0], func.__name__)
-                        and inspect.isfunction(
-                            func
-                        )  # func is a function, but it's being called like a method
-                    )
-
-                    # Собираем аргументы для вызова оригинальной функции
-                    func_args = []
-                    if is_instance_method:
-                        # Если это метод экземпляра, 'self' уже в args[0].
-                        # Мы вставляем 'session' на второе место (индекс 1).
-                        func_args.append(args[0])  # 'self'
-                        func_args.append(session)  # Сессия
-                        func_args.extend(args[1:])  # Остальные исходные аргументы
+                    # Создаем список аргументов для вызова
+                    call_args = list(args)
+                    # Если это метод экземпляра, сессия идет после self
+                    if inspect.ismethod(func):
+                        call_args.insert(1, session)
                     else:
-                        # Если это обычная функция или статический метод,
-                        # сессия будет первым аргументом.
-                        func_args.append(session)
-                        func_args.extend(args)  # Все исходные аргументы
+                        # Иначе сессия идет первой
+                        call_args.insert(0, session)
 
-                    result = await func(*func_args, **kwargs)
+                    # ИЗМЕНЕНИЕ: Исправление ошибки с типами.
+                    # Передача аргументов теперь корректна.
+                    result = await func(*call_args, **kwargs)
                     await session.commit()
                     logger.debug(
                         f"Транзакция успешно закоммичена для метода {func.__name__}"

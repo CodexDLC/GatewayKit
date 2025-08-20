@@ -7,7 +7,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import IntegrityError
-from asyncpg.exceptions import UniqueViolationError
+from asyncpg.exceptions import UniqueViolationError # type: ignore
 
 from libs.domain.orm.auth import Account
 from libs.domain.dto.auth import RegisterRequest, IssueTokenRequest
@@ -112,28 +112,30 @@ class AuthService:
             ):
                 # --- ЛОГИКА ПРИ НЕУДАЧЕ ---
                 # Увеличиваем счетчик неудачных попыток
-                attempts = await self.redis.redis.incr(attempts_key)
-                # Если это первая неудачная попытка, ставим TTL на "окно"
-                if attempts == 1:
-                    await self.redis.redis.expire(
-                        attempts_key, BRUTEFORCE_WINDOW_TTL_SEC
-                    )
+                if self.redis.redis is not None:
+                    attempts = await self.redis.redis.incr(attempts_key) # type: ignore
+                    # Если это первая неудачная попытка, ставим TTL на "окно"
+                    if attempts == 1:
+                        await self.redis.redis.expire(
+                            attempts_key, BRUTEFORCE_WINDOW_TTL_SEC
+                        )
 
-                # Если превысили лимит, баним пользователя
-                if attempts >= BRUTEFORCE_MAX_ATTEMPTS:
-                    await self.redis.set(ban_key, "1", ex=BRUTEFORCE_LOCK_TTL_SEC)
-                    await self.redis.delete(
-                        attempts_key
-                    )  # Удаляем счетчик, т.к. есть бан
-                    log.warning(
-                        f"User {dto.username} has been banned for {BRUTEFORCE_LOCK_TTL_SEC}s due to bruteforce."
-                    )
+                    # Если превысили лимит, баним пользователя
+                    if attempts >= BRUTEFORCE_MAX_ATTEMPTS:
+                        await self.redis.set(ban_key, "1", ex=BRUTEFORCE_LOCK_TTL_SEC)
+                        await self.redis.delete(
+                            attempts_key
+                        )  # Удаляем счетчик, т.к. есть бан
+                        log.warning(
+                            f"User {dto.username} has been banned for {BRUTEFORCE_LOCK_TTL_SEC}s due to bruteforce."
+                        )
 
                 return None, ErrorCode.AUTH_INVALID_CREDENTIALS
 
             # --- ЛОГИКА ПРИ УСПЕХЕ ---
             # Сбрасываем счетчик неудачных попыток
-            await self.redis.delete(attempts_key)
+            if self.redis is not None:
+                await self.redis.delete(attempts_key)
 
             # Выдаем пару токенов
             _access_token, response_data = await self.issue_token_pair(repo, account)

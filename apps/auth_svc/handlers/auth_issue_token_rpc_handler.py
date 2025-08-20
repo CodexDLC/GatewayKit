@@ -21,9 +21,5 @@ class AuthIssueTokenRpcHandler:
 
         return RpcResponse(
             success=True,
-            data=IssueTokenResponse(
-                token=token,
-                expires_in=3600,  # TODO: Брать из настроек
-                account_id=0,  # TODO: Вернуть реальный ID
-            ),
+            data=token
         )

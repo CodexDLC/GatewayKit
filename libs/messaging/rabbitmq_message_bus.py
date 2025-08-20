@@ -11,14 +11,20 @@ from urllib.parse import urlparse
 
 from libs.utils.logging_setup import app_logger as logger
 
-try:
-    import orjson  # type: ignore
+def dumps_orjson(o):
+    import orjson
+    return orjson.dumps(o)
 
-    _dumps = lambda o: orjson.dumps(o)
-except ImportError:
-    _dumps = lambda o: json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode(
+def dumps_json(o):
+    return json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )
+
+try:
+    import orjson  # type: ignore
+    _dumps = dumps_orjson
+except ImportError:
+    _dumps = dumps_json
 
 import aio_pika
 from aio_pika.abc import (

@@ -4,14 +4,14 @@ import uuid
 from typing import Callable, Awaitable
 
 from libs.messaging.i_message_bus import IMessageBus
-from libs.infra.di import Container  # Можно заменить на GatewayContainer для ясности
+from libs.containers.gateway_container import GatewayContainer
 from libs.messaging.base_listener import BaseMicroserviceListener
 from libs.messaging.rabbitmq_names import Exchanges as Ex
 
 from .event_listener import EventBroadcastListener
 
 ListenerFactory = Callable[
-    [IMessageBus, Container], Awaitable[BaseMicroserviceListener]
+    [IMessageBus, GatewayContainer], Awaitable[BaseMicroserviceListener]
 ]
 
 

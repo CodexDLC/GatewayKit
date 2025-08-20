@@ -1,7 +1,8 @@
+# apps/gateway/gateway/websocket_outbound_dispatcher.py
 from __future__ import annotations
 
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 from libs.utils.logging_setup import app_logger as logger
 
 from libs.messaging.i_message_bus import IMessageBus
@@ -10,7 +11,7 @@ from apps.gateway.gateway.client_connection_manager import ClientConnectionManag
 
 # Новые DTO
 from libs.domain.dto.backend import BackendOutboundEnvelope
-from libs.domain.dto.ws import WSEventFrame, WSErrorFrame
+from libs.domain.dto.ws import WSEventFrame, WSErrorFrame, ServerWSFrame, ServerEventStatus
 from libs.domain.dto.errors import ErrorDTO
 
 
@@ -28,7 +29,7 @@ class OutboundWebSocketDispatcher:
         self.message_bus = message_bus
         self.client_connection_manager = client_connection_manager
         self._listen_task: Optional[asyncio.Task] = None
-        self.outbound_queue_name = Queues.GATEWAY_OUTBOUND_WS_MESSAGES
+        self.outbound_queue_name = Queues.GATEWAY_WS_OUTBOUND # ИЗМЕНЕНИЕ
         logger.info("✅ OutboundWebSocketDispatcher инициализирован.")
 
     async def start_listening_for_outbound_messages(self):
@@ -63,7 +64,7 @@ class OutboundWebSocketDispatcher:
             if env.recipient.connection_id:
                 targets.append(env.recipient.connection_id)
             elif env.recipient.account_id:
-                targets.append(env.recipient.account_id)
+                targets.append(str(env.recipient.account_id)) # ИЗМЕНЕНИЕ: приводим к str
 
         # TODO: групповые рассылки подключим позже (delivery.mode == "group")
 
@@ -74,11 +75,12 @@ class OutboundWebSocketDispatcher:
             return
 
         # --- Сформировать кадр ответа ---
+        frame: ServerWSFrame # ДОБАВЛЕНО: явное указание типа
         if env.status == "error":
             err = env.error or ErrorDTO(
-                code="common.UNKNOWN", message="Unhandled backend error"
+                code="common.UNKNOWN", message="Unhandled backend error", details={} # ИЗМЕНЕНИЕ
             )
-            frame = WSErrorFrame(error=err, request_id=env.request_id)
+            frame = WSErrorFrame(error=err, request_id=env.request_id, v=1) # ИЗМЕНЕНИЕ
             payload_json = frame.model_dump_json()
         else:
             server_status = (
@@ -86,11 +88,12 @@ class OutboundWebSocketDispatcher:
             )
             frame = WSEventFrame(
                 event=env.event,
-                status=server_status,
+                status=cast(ServerEventStatus, server_status), # ИЗМЕНЕНИЕ
                 payload=env.payload or {},
                 request_id=env.request_id,
                 tick=env.tick,
                 state_version=env.state_version,
+                v=1 # ИЗМЕНЕНИЕ
             )
             payload_json = frame.model_dump_json()
 

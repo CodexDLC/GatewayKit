@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, cast
 
 import aio_pika
 from pydantic import BaseModel, ValidationError
@@ -99,7 +99,7 @@ class BaseMicroserviceListener(ABC):
                 and death_headers
                 and isinstance(death_headers[0], dict)
             ):
-                retry_count = death_headers[0].get("count", 0)
+                retry_count = cast(int, death_headers[0].get("count", 0))
 
             if retry_count >= self.RPC_MAX_RETRIES:
                 log.error(
