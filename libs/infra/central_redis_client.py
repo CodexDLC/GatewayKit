@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, cast, Awaitable
 import uuid
 import datetime
 import redis.asyncio as redis_asyncio
@@ -88,7 +88,7 @@ class CentralRedisClient:
         if self.redis_raw is None:
             self.logger.error("Redis (raw) не инициализирован.")
             return None
-        data_bytes = await cast(Redis, self.redis_raw).get(key)
+        data_bytes = await cast(Awaitable[Any], cast(Redis, self.redis_raw).get(key))
         if data_bytes:
             try:
                 return json.loads(data_bytes.decode("utf-8"))
@@ -106,7 +106,9 @@ class CentralRedisClient:
             return
         try:
             json_bytes = json.dumps(value, default=_json_serializer).encode("utf-8")
-            await cast(Redis, self.redis_raw).set(key, json_bytes, ex=ex)
+            await cast(
+                Awaitable[Any], cast(Redis, self.redis_raw).set(key, json_bytes, ex=ex)
+            )
         except Exception as e:
             self.logger.error(
                 f"Ошибка сериализации или сохранения JSON для ключа '{key}': {e}",
@@ -118,28 +120,28 @@ class CentralRedisClient:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return None
-        return await cast(Redis, self.redis).hget(name, key)
+        return await cast(Awaitable[Any], cast(Redis, self.redis).hget(name, key))
 
     async def hset(self, name: str, key: str, value: Any):
         """Устанавливает строковое значение в хеше."""
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return
-        await cast(Redis, self.redis).hset(name, key, value)
+        await cast(Awaitable[Any], cast(Redis, self.redis).hset(name, key, value))
 
     async def hgetall(self, name: str) -> Dict[str, str]:
         """Получает все поля и значения из хеша как строки."""
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return {}
-        return await cast(Redis, self.redis).hgetall(name)
+        return await cast(Awaitable[Any], cast(Redis, self.redis).hgetall(name))
 
     async def hdel(self, name: str, *keys: str) -> int:
         """Удаляет поля из хеша."""
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return 0
-        return await cast(Redis, self.redis).hdel(name, *keys)
+        return await cast(Awaitable[Any], cast(Redis, self.redis).hdel(name, *keys))
 
     async def hsetall_json(self, name: str, mapping: Dict[str, Any]):
         """Сохраняет словарь в хеш, сериализуя каждое значение в JSON."""
@@ -151,7 +153,10 @@ class CentralRedisClient:
                 k: json.dumps(v, default=_json_serializer).encode("utf-8")
                 for k, v in mapping.items()
             }
-            await cast(Redis, self.redis_raw).hset(name, mapping=encoded_mapping)
+            await cast(
+                Awaitable[Any],
+                cast(Redis, self.redis_raw).hset(name, mapping=encoded_mapping),
+            )
         except Exception as e:
             self.logger.error(
                 f"Ошибка при hsetall_json для хеша '{name}': {e}", exc_info=True
@@ -161,25 +166,25 @@ class CentralRedisClient:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return None
-        return await cast(Redis, self.redis).get(key)
+        return await cast(Awaitable[Any], cast(Redis, self.redis).get(key))
 
     async def set(self, key: str, value: Any, ex: Optional[int] = None):
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return
-        await cast(Redis, self.redis).set(key, value, ex=ex)
+        await cast(Awaitable[Any], cast(Redis, self.redis).set(key, value, ex=ex))
 
     async def delete(self, *keys: str) -> int:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return 0
-        return await cast(Redis, self.redis).delete(*keys)
+        return await cast(Awaitable[Any], cast(Redis, self.redis).delete(*keys))
 
     async def exists(self, *keys: str) -> int:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return 0
-        return await cast(Redis, self.redis).exists(*keys)
+        return await cast(Awaitable[Any], cast(Redis, self.redis).exists(*keys))
 
     def pipeline(self) -> redis_asyncio.client.Pipeline:
         if self.redis is None:
@@ -190,4 +195,4 @@ class CentralRedisClient:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return
-        await cast(Redis, self.redis).publish(channel, message)
+        await cast(Awaitable[Any], cast(Redis, self.redis).publish(channel, message))

@@ -6,7 +6,7 @@ import json
 import os
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 from urllib.parse import urlparse
 
 # Переносим все импорты наверх
@@ -72,9 +72,9 @@ class RabbitMQMessageBus(IMessageBus):
             try:
                 logger.info("%s (attempt %s)", log_info, attempt)
                 self._conn = await aio_pika.connect_robust(self._dsn)
-                self._chan = await self._conn.channel(
+                self._chan = cast(AbstractRobustChannel, await self._conn.channel(
                     publisher_confirms=getattr(self, "_pub_confirms", True)
-                )
+                ))
                 logger.success("bus: connected to RabbitMQ successfully")
 
                 # Запускаем слушателя RPC-ответов после успешного подключения

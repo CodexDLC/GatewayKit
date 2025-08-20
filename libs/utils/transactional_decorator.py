@@ -1,7 +1,7 @@
 # libs/utils/transactional_decorator.py
 import functools
 import logging
-from typing import Callable, Any, Coroutine, TypeVar, ParamSpec, Optional, cast
+from typing import Callable, Any, Coroutine, TypeVar, ParamSpec, Optional, cast, Concatenate
 from sqlalchemy.ext.asyncio import AsyncSession
 
 P = ParamSpec("P")
@@ -10,19 +10,17 @@ R = TypeVar("R")
 logger = logging.getLogger(__name__)
 
 
-def transactional(session_factory: Callable[[], AsyncSession]):
+def transactional(session_factory: Callable[[], AsyncSession]) -> Callable[
+    [Callable[Concatenate[AsyncSession, P], Coroutine[Any, Any, R]]],
+    Callable[P, Coroutine[Any, Any, R]]
+]:
     """
-    Декоратор для асинхронных методов, который управляет транзакционной границей.
-    Он открывает асинхронную сессию, передает ее в оборачиваемый метод
-    (как первый позиционный аргумент ПОСЛЕ self, если это метод класса)
-    и выполняет коммит или откат транзакции в зависимости от результата выполнения.
-
-    :param session_factory: Фабрика, возвращающая новую AsyncSession.
-                           Например, AsyncSessionLocal.
+    Декоратор для асинхронных функций: добавляет в вызов первый аргумент AsyncSession
+    и управляет транзакцией (commit/rollback).
     """
 
     def decorator(
-        func: Callable[P, Coroutine[Any, Any, R]],
+        func: Callable[Concatenate[AsyncSession, P], Coroutine[Any, Any, R]],
     ) -> Callable[P, Coroutine[Any, Any, R]]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -31,7 +29,7 @@ def transactional(session_factory: Callable[[], AsyncSession]):
                 async with session_factory() as session:
                     logger.debug(f"Транзакция открыта для метода {func.__name__}")
 
-                    # ИЗМЕНЕНИЕ: Упрощенная передача аргументов для совместимости с Mypy
+                    # Сигнатура согласована с mypy: (session, *args, **kwargs)
                     result = await func(cast(AsyncSession, session), *args, **kwargs)
 
                     await session.commit()
