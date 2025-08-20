@@ -3,7 +3,7 @@ from __future__ import annotations
 from libs.domain.dto.auth import RefreshTokenRequest, RefreshTokenResponse
 from libs.domain.dto.rpc import RpcResponse
 from ..services.auth_service import AuthService
-from typing import Dict, Any
+
 
 
 class AuthRefreshTokenRpcHandler:

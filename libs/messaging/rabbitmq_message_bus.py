@@ -6,7 +6,7 @@ import json
 import os
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 from urllib.parse import urlparse
 
 # Переносим все импорты наверх
@@ -15,8 +15,9 @@ from aio_pika.abc import (
     AbstractIncomingMessage,
     AbstractRobustChannel,
     AbstractRobustConnection,
+    AbstractChannel
 )
-from aio_pika.exceptions import ConnectionClosed, ChannelClosed
+from aio_pika.exceptions import UnroutableError, ConnectionClosed, ChannelClosed
 
 from .i_message_bus import IMessageBus, MessageHandler
 from libs.utils.logging_setup import app_logger as logger
@@ -270,7 +271,7 @@ class RabbitMQMessageBus(IMessageBus):
             await exchange.publish(message, routing_key=routing_key, mandatory=True)
 
             return await asyncio.wait_for(future, timeout=self.RPC_TIMEOUT_MS / 1000.0)
-        except aio_pika.exceptions.UnroutableError:
+        except UnroutableError:
             logger.error(
                 "RPC message is unroutable. Exchange: %s, Routing key: %s",
                 exchange_name,
