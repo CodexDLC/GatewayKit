@@ -47,8 +47,12 @@ class AuthContainer:
         redis_url = os.getenv("REDIS_URL")
         redis_pwd = os.getenv("REDIS_PASSWORD")
 
-        if not all([amqp_url, jwt_secret, redis_url]):
-            raise ValueError("RABBITMQ_DSN, JWT_SECRET, and REDIS_URL must be set")
+        if not amqp_url:
+            raise ValueError("RABBITMQ_DSN environment variable not set.")
+        if not jwt_secret:
+            raise ValueError("JWT_SECRET environment variable not set.")
+        if not redis_url:
+            raise ValueError("REDIS_URL environment variable not set.")
 
         # --- 2. Создание экземпляров клиентов ---
         bus = RabbitMQMessageBus(amqp_url)

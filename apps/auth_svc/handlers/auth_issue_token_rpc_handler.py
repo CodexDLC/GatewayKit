@@ -1,7 +1,7 @@
 # apps/auth_svc/handlers/auth_issue_token_rpc_handler.py
 from __future__ import annotations
-from libs.domain.dto.auth import IssueTokenRequest, IssueTokenResponse
-from libs.domain.dto.rpc import RpcResponse
+from domain.dto.rpc import RpcResponse
+from libs.domain.dto.auth import IssueTokenRequest
 from ..services.auth_service import AuthService
 
 

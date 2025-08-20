@@ -36,13 +36,13 @@ class AuthRefreshTokenRpc(BaseMicroserviceListener):
         try:
             req = RefreshTokenRequest.model_validate(payload)
         except ValidationError as ve:
-            rpc_response = RpcResponse(
+            rpc_response: RpcResponse = RpcResponse(
                 success=False, error_code=ErrorCode.VALIDATION_FAILED, message=str(ve)
             )
             await self._reply(meta, rpc_response)
             return
 
-        rpc_response = await self._handler.process(req)
+        rpc_response: RpcResponse = await self._handler.process(req) # ИЗМЕНЕНИЕ
         await self._reply(meta, rpc_response)
 
     async def _reply(self, meta: Dict[str, Any], rpc_response: RpcResponse):

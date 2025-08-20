@@ -1,12 +1,12 @@
 # libs/infra/central_redis_client.py
 import json
 import logging
-import os  # <-- Добавлен импорт
+import os
 from typing import Any, Dict, Optional
 import uuid
 import datetime
 import redis.asyncio as redis_asyncio
-
+from redis.asyncio import Redis
 
 def _json_serializer(obj):
     if isinstance(obj, (datetime.datetime, datetime.date)):
@@ -25,20 +25,16 @@ class CentralRedisClient:
         self,
         redis_url: str,
         password: Optional[str] = None,
-        # --- НАЧАЛО ИЗМЕНЕНИЙ ---
         pool_size: int = int(os.getenv("REDIS_POOL_SIZE", "40")),
         socket_timeout: int = int(os.getenv("REDIS_TIMEOUT_SEC", "2")),
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     ):
         self.logger = logging.getLogger("central_redis_client")
         self._redis_url = redis_url
         self._password = password
-        # --- ИЗМЕНЕНИЯ ---
         self._pool_size = pool_size
         self._socket_timeout = socket_timeout
-        # -----------------
-        self.redis: Optional[redis_asyncio.Redis] = None
-        self.redis_raw: Optional[redis_asyncio.Redis] = None
+        self.redis: Optional[Redis] = None
+        self.redis_raw: Optional[Redis] = None
         self.logger.info("✨ CentralRedisClient инициализирован, ожидание подключения.")
 
     async def connect(self):
@@ -48,7 +44,6 @@ class CentralRedisClient:
                 f"🔧 Подключение к центральному Redis: {self._redis_url}..."
             )
             try:
-                # --- ИСПОЛЬЗУЕМ НОВЫЕ ПАРАМЕТРЫ ---
                 self.redis = redis_asyncio.from_url(
                     self._redis_url,
                     password=self._password,
@@ -65,7 +60,6 @@ class CentralRedisClient:
                     socket_timeout=self._socket_timeout,
                     socket_connect_timeout=self._socket_timeout,
                 )
-                # ---------------------------------
                 await self.redis.ping()
                 await self.redis_raw.ping()
                 self.logger.info(
@@ -88,8 +82,6 @@ class CentralRedisClient:
         self.redis = None
         self.redis_raw = None
         self.logger.info("✅ Соединения с Redis успешно закрыты.")
-
-    # --- Методы для работы с JSON (ключ-значение) ---
 
     async def get_json(self, key: str) -> Optional[dict]:
         """Получает значение по ключу, декодирует из UTF-8 и парсит JSON."""
@@ -121,8 +113,6 @@ class CentralRedisClient:
                 exc_info=True,
             )
 
-    # --- Методы для работы с Hashes ---
-
     async def hget(self, name: str, key: str) -> Optional[str]:
         """Получает строковое значение из хеша."""
         if self.redis is None:
@@ -135,8 +125,7 @@ class CentralRedisClient:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return
-
-        return await self.redis.hset(name, key, value)
+        await self.redis.hset(name, key, value) # ИЗМЕНЕНИЕ
 
     async def hgetall(self, name: str) -> Dict[str, str]:
         """Получает все поля и значения из хеша как строки."""
@@ -168,8 +157,6 @@ class CentralRedisClient:
                 f"Ошибка при hsetall_json для хеша '{name}': {e}", exc_info=True
             )
 
-    # --- Стандартные Redis команды ---
-
     async def get(self, key: str) -> Optional[str]:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
@@ -180,8 +167,7 @@ class CentralRedisClient:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return
-
-        return await self.redis.set(key, value, ex=ex)
+        await self.redis.set(key, value, ex=ex)
 
     async def delete(self, *keys: str) -> int:
         if self.redis is None:
@@ -204,5 +190,4 @@ class CentralRedisClient:
         if self.redis is None:
             self.logger.error("Redis не инициализирован.")
             return
-
-        return await self.redis.publish(channel, message)
+        await self.redis.publish(channel, message)

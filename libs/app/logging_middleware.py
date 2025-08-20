@@ -4,7 +4,7 @@ import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from typing import Callable, Awaitable, Any
+from typing import Callable, Awaitable
 
 from libs.utils.logging_setup import app_logger as logger
 
@@ -17,7 +17,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     - Логирует информацию о запросе и ответе в JSON-формате.
     """
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response: # ИЗМЕНЕНИЕ
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         # 1. Получаем или генерируем Request ID
         request_id = request.headers.get("x-request-id", f"req_{uuid.uuid4().hex}")
 

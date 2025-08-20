@@ -5,6 +5,7 @@ from libs.domain.dto.rpc import RpcResponse
 from ..services.auth_service import AuthService
 
 
+
 class AuthRefreshTokenRpcHandler:
     def __init__(self, auth_service: AuthService) -> None:
         self.auth_service = auth_service
@@ -18,4 +19,5 @@ class AuthRefreshTokenRpcHandler:
                 success=False, error_code=error, message="Failed to refresh token."
             )
 
+        # ИЗМЕНЕНИЕ: Явно приводим token_data к типу dict
         return RpcResponse(success=True, data=RefreshTokenResponse(**token_data))

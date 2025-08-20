@@ -2,7 +2,6 @@
 import functools
 import logging
 from typing import Callable, Any, Coroutine, TypeVar, ParamSpec, Optional
-import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 P = ParamSpec("P")
@@ -32,18 +31,9 @@ def transactional(session_factory: Callable[[], AsyncSession]):
                 async with session_factory() as session:
                     logger.debug(f"Транзакция открыта для метода {func.__name__}")
 
-                    # Создаем список аргументов для вызова
-                    call_args = list(args)
-                    # Если это метод экземпляра, сессия идет после self
-                    if inspect.ismethod(func):
-                        call_args.insert(1, session)
-                    else:
-                        # Иначе сессия идет первой
-                        call_args.insert(0, session)
+                    # ИЗМЕНЕНИЕ: Упрощенная передача аргументов для совместимости с Mypy
+                    result = await func(session, *args, **kwargs)
 
-                    # ИЗМЕНЕНИЕ: Исправление ошибки с типами.
-                    # Передача аргументов теперь корректна.
-                    result = await func(*call_args, **kwargs)
                     await session.commit()
                     logger.debug(
                         f"Транзакция успешно закоммичена для метода {func.__name__}"

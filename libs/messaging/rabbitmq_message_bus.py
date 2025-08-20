@@ -9,6 +9,16 @@ import uuid
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
+# Переносим импорты наверх
+import aio_pika
+from aio_pika.abc import (
+    AbstractIncomingMessage,
+    AbstractRobustChannel,
+    AbstractRobustConnection,
+)
+from aio_pika.exceptions import UnroutableError
+
+from .i_message_bus import IMessageBus, MessageHandler
 from libs.utils.logging_setup import app_logger as logger
 
 def dumps_orjson(o):
@@ -26,21 +36,12 @@ try:
 except ImportError:
     _dumps = dumps_json
 
-import aio_pika
-from aio_pika.abc import (
-    AbstractIncomingMessage,
-    AbstractRobustChannel,
-    AbstractRobustConnection,
-)
-from .i_message_bus import IMessageBus, MessageHandler
-
 
 class RabbitMQMessageBus(IMessageBus):
     """
     JSON-шина на RabbitMQ (aio-pika, publisher confirms).
     Реализует Direct Reply-to для RPC и publisher confirms для надежности.
     """
-
     def __init__(
         self,
         dsn: str,
@@ -275,7 +276,7 @@ class RabbitMQMessageBus(IMessageBus):
 
             return await asyncio.wait_for(future, timeout=self.RPC_TIMEOUT_MS / 1000.0)
 
-        except aio_pika.exceptions.UnroutableError:
+        except UnroutableError:
             logger.error(
                 "RPC message is unroutable. Exchange: %s, Routing key: %s",
                 exchange_name,
