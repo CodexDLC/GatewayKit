@@ -57,9 +57,9 @@ async def service_lifespan(
         raise
     finally:
         log.info("Остановка сервиса...")
-        for l in reversed(listeners):
+        for listener in reversed(listeners):
             try:
-                await l.stop()
+                await listener.stop()
             except Exception:
                 log.exception(f"Ошибка при остановке слушателя {l.name}")
 
@@ -80,12 +80,14 @@ def create_service_app(
     """
     Фабрика для создания FastAPI-приложения микросервиса.
     """
-    _lifespan = lambda app: service_lifespan(
-        app,
-        container_factory=container_factory,
-        topology_declarator=topology_declarator,
-        listener_factories=listener_factories or []
-    )
+
+    def _lifespan(app):
+        return service_lifespan(
+            app,
+            container_factory=container_factory,
+            topology_declarator=topology_declarator,
+            listener_factories=listener_factories or [],
+        )
 
     app = FastAPI(title=service_name, lifespan=_lifespan)
 
