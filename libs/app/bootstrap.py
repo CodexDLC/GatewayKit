@@ -61,7 +61,7 @@ async def service_lifespan(
             try:
                 await listener.stop()
             except Exception:
-                log.exception(f"Ошибка при остановке слушателя {l.name}")
+                log.exception(f"Ошибка при остановке слушателя {getattr(listener, 'name', repr(listener))}")
 
         if hasattr(app.state, 'container'):
             await app.state.container.shutdown()
