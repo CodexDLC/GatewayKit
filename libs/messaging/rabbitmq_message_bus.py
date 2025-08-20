@@ -72,9 +72,12 @@ class RabbitMQMessageBus(IMessageBus):
             try:
                 logger.info("%s (attempt %s)", log_info, attempt)
                 self._conn = await aio_pika.connect_robust(self._dsn)
-                self._chan = cast(AbstractRobustChannel, await self._conn.channel(
-                    publisher_confirms=getattr(self, "_pub_confirms", True)
-                ))
+                self._chan = cast(
+                    AbstractRobustChannel,
+                    await self._conn.channel(
+                        publisher_confirms=getattr(self, "_pub_confirms", True)
+                    ),
+                )
                 logger.success("bus: connected to RabbitMQ successfully")
 
                 # Запускаем слушателя RPC-ответов после успешного подключения

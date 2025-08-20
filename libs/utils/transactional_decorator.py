@@ -1,7 +1,16 @@
 # libs/utils/transactional_decorator.py
 import functools
 import logging
-from typing import Callable, Any, Coroutine, TypeVar, ParamSpec, Optional, cast, Concatenate
+from typing import (
+    Callable,
+    Any,
+    Coroutine,
+    TypeVar,
+    ParamSpec,
+    Optional,
+    cast,
+    Concatenate,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 P = ParamSpec("P")
@@ -10,9 +19,11 @@ R = TypeVar("R")
 logger = logging.getLogger(__name__)
 
 
-def transactional(session_factory: Callable[[], AsyncSession]) -> Callable[
+def transactional(
+    session_factory: Callable[[], AsyncSession],
+) -> Callable[
     [Callable[Concatenate[AsyncSession, P], Coroutine[Any, Any, R]]],
-    Callable[P, Coroutine[Any, Any, R]]
+    Callable[P, Coroutine[Any, Any, R]],
 ]:
     """
     Декоратор для асинхронных функций: добавляет в вызов первый аргумент AsyncSession
