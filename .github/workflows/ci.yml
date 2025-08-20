@@ -81,7 +81,7 @@ jobs:
 
       - name: Create .env file for tests
         run: |
-          cp infra/.env.sample .env
+          cp .env.sample .env
           echo "LOG_FORMATTER=json" >> .env
 
       - name: Start services
