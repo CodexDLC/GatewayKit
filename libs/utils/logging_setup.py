@@ -3,20 +3,18 @@ import os
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
-from typing import Any, TYPE_CHECKING
+from typing import Any
+from logging import Logger # ИЗМЕНЕНИЕ: Добавляем импорт Logger
 
 # --- НОВЫЕ ИМПОРТЫ ---
 from .json_logging import JsonFormatter, SecretMaskingFilter
-
-if TYPE_CHECKING:
-    from logging import Logger
 
 # --- 1. Определение пользовательских уровней (без изменений) ---
 SUCCESS_LEVEL_NUM = 25
 logging.addLevelName(SUCCESS_LEVEL_NUM, "SUCCESS")
 
 
-def success_log_method(self: Logger, message: str, *args: Any, **kwargs: Any):  # type: ignore
+def success_log_method(self: Logger, message: str, *args: Any, **kwargs: Any):
     """Метод для уровня логирования SUCCESS."""
     if self.isEnabledFor(SUCCESS_LEVEL_NUM):
         self._log(SUCCESS_LEVEL_NUM, message, args, **kwargs)
@@ -66,7 +64,7 @@ class LoggerConfig:
 # --- 3. Функции для получения обработчиков (ТОЛЬКО JSON) ---
 
 
-def get_json_console_handler(level, service_name: str):
+def get_json_console_handler(level: int, service_name: str):
     """Возвращает консольный обработчик с JSON-форматом."""
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
@@ -81,7 +79,7 @@ def get_json_console_handler(level, service_name: str):
     return handler
 
 
-def get_json_file_handler(path, level, max_size, backups, service_name: str):
+def get_json_file_handler(path: str, level: int, max_size: int, backups: int, service_name: str):
     """Возвращает файловый обработчик с JSON-форматом и ротацией."""
     log_dir = os.path.dirname(path)
     try:
