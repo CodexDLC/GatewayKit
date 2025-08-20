@@ -3,54 +3,29 @@ from __future__ import annotations
 from libs.domain.dto.auth import RegisterRequest, RegisterResponse
 from libs.domain.dto.rpc import RpcResponse
 from libs.app.errors import ErrorCode
-from apps.auth_svc.i_auth_handler import IAuthHandler
-from sqlalchemy.ext.asyncio import AsyncSession
-from asyncpg.exceptions import UniqueViolationError
-from sqlalchemy.exc import IntegrityError
-from libs.utils.transactional_decorator import transactional
+from ..services.auth_service import AuthService
 
 
-# TODO: перенести декоратор в libs/app
-# TODO: добавить логику
-# TODO: дописать
-class AuthRegisterRpcHandler(IAuthHandler):
-    def __init__(self, session_factory) -> None:
-        self.session_factory = session_factory
+class AuthRegisterRpcHandler:
+    def __init__(self, auth_service: AuthService) -> None:
+        self.auth_service = auth_service
 
-    @transactional(lambda: self.session_factory())
-    async def process(self, session: AsyncSession, dto: RegisterRequest) -> RpcResponse:
-        from apps.auth_svc.db.auth_repository import \
-            AuthRepository  # Импортируем здесь, чтобы избежать циклических зависимостей
+    async def process(self, dto: RegisterRequest) -> RpcResponse:
+        """Делегирует создание аккаунта в AuthService."""
+        account, error = await self.auth_service.register(dto)
 
-        try:
-            repo = AuthRepository(session)
-            account_id, email, username = await repo.create_user(dto)
-
-            return RpcResponse(
-                success=True,
-                data=RegisterResponse(
-                    account_id=account_id,
-                    email=email,
-                    username=username
-                )
-            )
-
-        except IntegrityError as e:
-            if isinstance(e.orig, UniqueViolationError):
-                return RpcResponse(
-                    success=False,
-                    error_code=ErrorCode.AUTH_USER_EXISTS,
-                    message="Пользователь с таким именем или email уже существует."
-                )
-            else:
-                return RpcResponse(
-                    success=False,
-                    error_code=ErrorCode.INTERNAL_ERROR,
-                    message="Ошибка базы данных при регистрации."
-                )
-        except Exception as e:
+        if error:
             return RpcResponse(
                 success=False,
-                error_code=ErrorCode.INTERNAL_ERROR,
-                message="Внутренняя ошибка сервера."
+                error_code=error,
+                message="Registration failed."
             )
+
+        return RpcResponse(
+            success=True,
+            data=RegisterResponse(
+                account_id=account.id,
+                email=account.email,
+                username=account.username
+            )
+        )

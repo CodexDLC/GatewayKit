@@ -11,6 +11,8 @@ from libs.messaging.rabbitmq_names import Queues
 from .auth_issue_token_rpc import AuthIssueTokenRpc
 from .auth_validate_token_rpc import AuthValidateTokenRpc
 from .auth_register_rpc import AuthRegisterRpc
+from .auth_refresh_token_rpc import AuthRefreshTokenRpc
+from .auth_logout_rpc import AuthLogoutRpc
 
 # Тип для фабрик, чтобы было понятнее
 ListenerFactory = Callable[[IMessageBus, AuthContainer], Awaitable[BaseMicroserviceListener]]
@@ -43,5 +45,25 @@ def create_register_listener_factory() -> ListenerFactory:
             queue_name=Queues.AUTH_REGISTER_RPC,
             message_bus=bus,
             handler=container.register_handler,
+        )
+    return factory
+
+def create_refresh_token_listener_factory() -> ListenerFactory:
+    """Возвращает фабрику для создания AuthRefreshTokenRpc."""
+    async def factory(bus: IMessageBus, container: AuthContainer) -> BaseMicroserviceListener:
+        return AuthRefreshTokenRpc(
+            queue_name=Queues.AUTH_REFRESH_TOKEN_RPC,
+            message_bus=bus,
+            handler=container.refresh_token_handler,
+        )
+    return factory
+
+def create_logout_listener_factory() -> ListenerFactory:
+    """Возвращает фабрику для создания AuthLogoutRpc."""
+    async def factory(bus: IMessageBus, container: AuthContainer) -> BaseMicroserviceListener:
+        return AuthLogoutRpc(
+            queue_name=Queues.AUTH_LOGOUT_RPC,
+            message_bus=bus,
+            handler=container.logout_handler,
         )
     return factory

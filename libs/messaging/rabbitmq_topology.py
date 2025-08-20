@@ -75,6 +75,9 @@ async def declare_auth_topology(bus: IMessageBus) -> None:
     await declare_rpc_queue_with_retry(bus, Q.AUTH_ISSUE_TOKEN_RPC)
     await declare_rpc_queue_with_retry(bus, Q.AUTH_VALIDATE_TOKEN_RPC)
     await declare_rpc_queue_with_retry(bus, Q.AUTH_REGISTER_RPC)
+    # --- ДОБАВЛЯЕМ ОБЪЯВЛЕНИЕ НОВЫХ ОЧЕРЕДЕЙ ---
+    await declare_rpc_queue_with_retry(bus, Q.AUTH_REFRESH_TOKEN_RPC)
+    await declare_rpc_queue_with_retry(bus, Q.AUTH_LOGOUT_RPC)
 
 
 async def declare_gateway_topology(bus: IMessageBus) -> None:

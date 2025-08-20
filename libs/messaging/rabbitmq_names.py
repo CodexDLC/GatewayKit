@@ -15,6 +15,9 @@ class Queues:
     AUTH_ISSUE_TOKEN_RPC = "core.auth.rpc.issue_token.v1"
     AUTH_VALIDATE_TOKEN_RPC = "core.auth.rpc.validate_token.v1"
     AUTH_REGISTER_RPC = "core.auth.rpc.register.v1"
+    # --- НОВЫЕ ОЧЕРЕДИ ---
+    AUTH_REFRESH_TOKEN_RPC = "core.auth.rpc.refresh_token.v1"
+    AUTH_LOGOUT_RPC = "core.auth.rpc.logout.v1"
 
     GATEWAY_WS_OUTBOUND = "core.gateway.queue.ws_outbound.v1"
 

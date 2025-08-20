@@ -57,3 +57,26 @@ class RegisterResponse(BaseModel):
     username: Optional[str] = None
     error_code: Optional[str] = None
     error_message: Optional[str] = None
+
+# ----- REFRESH TOKEN -----
+class RefreshTokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    refresh_token: str
+
+class RefreshTokenResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    refresh_token: str
+    token_type: str = "Bearer"
+    expires_in: int
+    account_id: int
+
+# ----- LOGOUT -----
+class LogoutRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    refresh_token: str
+
+class LogoutResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    success: bool = True
+    message: str = "Successfully logged out"
