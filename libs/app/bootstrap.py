@@ -36,7 +36,9 @@ async def service_lifespan(
     log.info("Запуск сервиса...")
     listeners = []
     try:
+        # --- ИЗМЕНЕНИЕ: используем фабрику, переданную в функцию ---
         container = await container_factory()
+        # -----------------------------------------------------------
         app.state.container = container
         bus = container.bus
         log.info("DI-контейнер инициализирован.")
@@ -66,11 +68,8 @@ async def service_lifespan(
             except Exception:
                 log.exception(f"Ошибка при остановке слушателя {l.name}")
 
-        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-        # Правильная проверка наличия атрибута
         if hasattr(app.state, 'container'):
             await app.state.container.shutdown()
-        # -------------------------
         log.info("Сервис остановлен.")
 
 
@@ -95,11 +94,13 @@ def create_service_app(
 
     app = FastAPI(title=service_name, lifespan=_lifespan)
 
+    # --- ИЗМЕНЕНИЕ: создаем корутину при вызове ---
     async def rmq_check():
         is_ready = await app.state.container.bus.is_connected()
         return "rabbitmq", is_ready
 
     readiness_checks = [rmq_check]
+    # -----------------------------------------------
 
     app.include_router(create_readiness_router(readiness_checks))
 

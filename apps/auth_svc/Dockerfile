@@ -22,10 +22,15 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # код
 COPY pyproject.toml .
-COPY alembic.ini .
-COPY migrations ./migrations
 COPY libs ./libs
 COPY apps ./apps
+
+# --- ДОБАВЛЕНИЕ ДЛЯ ALEMBIC ---
+# Копируем alembic.ini и папку с миграциями
+COPY alembic.ini .
+COPY migrations ./migrations
+# -----------------------------
+
 RUN pip install .
 
 # логи
@@ -34,6 +39,4 @@ RUN mkdir -p /app/logs && chown -R 1001:1001 /app/logs
 EXPOSE 8001
 USER 1001
 
-# --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-# Запускаем новый, правильный файл auth_svc_main.py
 CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","-w","1","-b","0.0.0.0:8001","apps.auth_svc.auth_svc_main:app"]

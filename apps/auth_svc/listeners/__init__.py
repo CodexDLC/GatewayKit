@@ -1,10 +1,9 @@
-# package placeholder
 # apps/auth_svc/listeners/__init__.py
 from __future__ import annotations
 from typing import Callable, Awaitable
 
 from libs.messaging.i_message_bus import IMessageBus
-from libs.infra.di import Container  # DI-контейнер для доступа к хендлерам
+from libs.containers.auth_container import AuthContainer # <- теперь контейнер из libs
 from libs.messaging.base_listener import BaseMicroserviceListener
 from libs.messaging.rabbitmq_names import Queues
 
@@ -14,11 +13,11 @@ from .auth_validate_token_rpc import AuthValidateTokenRpc
 from .auth_register_rpc import AuthRegisterRpc
 
 # Тип для фабрик, чтобы было понятнее
-ListenerFactory = Callable[[IMessageBus, Container], Awaitable[BaseMicroserviceListener]]
+ListenerFactory = Callable[[IMessageBus, AuthContainer], Awaitable[BaseMicroserviceListener]]
 
 def create_issue_token_listener_factory() -> ListenerFactory:
     """Возвращает фабрику для создания AuthIssueTokenRpc."""
-    async def factory(bus: IMessageBus, container: Container) -> BaseMicroserviceListener:
+    async def factory(bus: IMessageBus, container: AuthContainer) -> BaseMicroserviceListener:
         return AuthIssueTokenRpc(
             queue_name=Queues.AUTH_ISSUE_TOKEN_RPC,
             message_bus=bus,
@@ -28,7 +27,7 @@ def create_issue_token_listener_factory() -> ListenerFactory:
 
 def create_validate_token_listener_factory() -> ListenerFactory:
     """Возвращает фабрику для создания AuthValidateTokenRpc."""
-    async def factory(bus: IMessageBus, container: Container) -> BaseMicroserviceListener:
+    async def factory(bus: IMessageBus, container: AuthContainer) -> BaseMicroserviceListener:
         return AuthValidateTokenRpc(
             queue_name=Queues.AUTH_VALIDATE_TOKEN_RPC,
             message_bus=bus,
@@ -38,12 +37,11 @@ def create_validate_token_listener_factory() -> ListenerFactory:
 
 def create_register_listener_factory() -> ListenerFactory:
     """Возвращает фабрику для создания AuthRegisterRpc."""
-    async def factory(bus: IMessageBus, container: Container) -> BaseMicroserviceListener:
-        # У этого хендлера пока нет зависимостей, создаем его на лету
-        from apps.auth_svc.handlers.auth_register_rpc_handler import AuthRegisterRpcHandler
+    async def factory(bus: IMessageBus, container: AuthContainer) -> BaseMicroserviceListener:
+        # Теперь берем хендлер из контейнера
         return AuthRegisterRpc(
             queue_name=Queues.AUTH_REGISTER_RPC,
             message_bus=bus,
-            handler=AuthRegisterRpcHandler(),
+            handler=container.register_handler,
         )
     return factory

@@ -1,10 +1,14 @@
 # migrations/env.py
+import asyncio
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import pool, text # <-- ДОБАВЛЕН ИМПОРТ text
 from alembic import context
+from alembic.runtime.environment import EnvironmentContext, MigrationContext
+from alembic.config import Config
+
 
 # Загружаем URL БД из переменной окружения
 DB_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://game:gamepwd@localhost:5432/game")
@@ -59,6 +63,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# --- ИСПРАВЛЕНИЕ ЗДЕСЬ: делаем функцию синхронной ---
 def do_run_migrations(connection):
     # Получаем имя схемы из аргументов командной строки
     schema = context.get_x_argument(as_dictionary=True).get('schema')
@@ -68,8 +73,9 @@ def do_run_migrations(connection):
             f"Доступные схемы: {', '.join(SCHEMA_VERSION_TABLES.keys())}"
         )
 
-    # Устанавливаем search_path для текущего соединения
-    connection.execute(f'SET search_path TO "{schema}", public')
+    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: оборачиваем строку в text() ---
+    connection.execute(text(f'SET search_path TO "{schema}", public'))
+    # -----------------------------------------------------
 
     # Устанавливаем имя таблицы версий для данной схемы
     context.configure(
@@ -79,25 +85,25 @@ def do_run_migrations(connection):
         include_schemas=True, # Важно для работы со схемами
     )
 
-    with context.begin_transaction():
-        context.run_migrations()
+    context.run_migrations()
+# -----------------------------------------------------
 
-
-def run_migrations_online() -> None:
+async def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
-    ini_config = config.get_section(config.config_ini_section)
-    ini_config['sqlalchemy.url'] = DB_URL # Переопределяем URL из env
-    connectable = engine_from_config(
-        ini_config,
-        prefix="sqlalchemy.",
+    connectable = create_async_engine(
+        DB_URL,
         poolclass=pool.NullPool,
+        future=True,
     )
 
-    with connectable.connect() as connection:
-        do_run_migrations(connection)
+    async with connectable.connect() as connection:
+        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: передаем синхронную функцию ---
+        await connection.run_sync(do_run_migrations)
+        # ------------------------------------------------------
+
 
 # --- Helpers ---
 def get_version_table_from_cli() -> str:
@@ -116,4 +122,4 @@ def get_version_table_from_cli() -> str:
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    asyncio.run(run_migrations_online())
