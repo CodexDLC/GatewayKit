@@ -1,4 +1,3 @@
-# libs/infra/central_redis_client.py
 import json
 import logging
 import os
@@ -88,7 +87,7 @@ class CentralRedisClient:
         if self.redis_raw is None:
             self.logger.error("Redis (raw) не инициализирован.")
             return None
-        data_bytes = await self.redis_raw.get(key)
+        data_bytes = await cast(Redis, self.redis_raw).get(key)
         if data_bytes:
             try:
                 return json.loads(data_bytes.decode("utf-8"))
@@ -106,7 +105,7 @@ class CentralRedisClient:
             return
         try:
             json_bytes = json.dumps(value, default=_json_serializer).encode("utf-8")
-            await self.redis_raw.set(key, json_bytes, ex=ex)
+            await cast(Redis, self.redis_raw).set(key, json_bytes, ex=ex)
         except Exception as e:
             self.logger.error(
                 f"Ошибка сериализации или сохранения JSON для ключа '{key}': {e}",
@@ -151,7 +150,7 @@ class CentralRedisClient:
                 k: json.dumps(v, default=_json_serializer).encode("utf-8")
                 for k, v in mapping.items()
             }
-            await self.redis_raw.hset(name, mapping=encoded_mapping)
+            await cast(Redis, self.redis_raw).hset(name, mapping=encoded_mapping)
         except Exception as e:
             self.logger.error(
                 f"Ошибка при hsetall_json для хеша '{name}': {e}", exc_info=True
