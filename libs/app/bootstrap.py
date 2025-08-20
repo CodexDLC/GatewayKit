@@ -106,7 +106,7 @@ def create_service_app(
         is_ready = await app.state.container.bus.is_connected()
         return "rabbitmq", is_ready
 
-    readiness_checks.append(rmq_check())
+    readiness_checks.append(rmq_check)
 
     # 2. Проверка PostgreSQL
     async def db_check():
@@ -116,7 +116,7 @@ def create_service_app(
             return "postgres", is_ready
         return None  # Сигнал, что проверка не нужна
 
-    readiness_checks.append(db_check())
+    readiness_checks.append(db_check)
 
     # 3. Проверка Redis
     async def redis_check():
@@ -129,7 +129,7 @@ def create_service_app(
                 return "redis", False
         return None  # Сигнал, что проверка не нужна
 
-    readiness_checks.append(redis_check())
+    readiness_checks.append(redis_check)
     # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     # Фильтруем None значения перед передачей в роутер
