@@ -13,15 +13,20 @@ from apps.auth_svc.services.auth_service import AuthService
 from apps.auth_svc.utils.jwt_manager import JwtManager
 from apps.auth_svc.utils.password_manager import PasswordManager
 from apps.auth_svc.handlers.auth_issue_token_rpc_handler import AuthIssueTokenRpcHandler
-from apps.auth_svc.handlers.auth_validate_token_rpc_handler import AuthValidateTokenRpcHandler
+from apps.auth_svc.handlers.auth_validate_token_rpc_handler import (
+    AuthValidateTokenRpcHandler,
+)
 from apps.auth_svc.handlers.auth_register_rpc_handler import AuthRegisterRpcHandler
-from apps.auth_svc.handlers.auth_refresh_token_rpc_handler import AuthRefreshTokenRpcHandler
+from apps.auth_svc.handlers.auth_refresh_token_rpc_handler import (
+    AuthRefreshTokenRpcHandler,
+)
 from apps.auth_svc.handlers.auth_logout_rpc_handler import AuthLogoutRpcHandler
 
 
 @dataclass
 class AuthContainer:
     """DI-контейнер для AuthService."""
+
     bus: IMessageBus
     redis: CentralRedisClient
     auth_service: AuthService
@@ -50,10 +55,7 @@ class AuthContainer:
         redis_client = CentralRedisClient(redis_url=redis_url, password=redis_pwd)
 
         # Параллельно подключаемся ко внешним системам
-        await asyncio.gather(
-            bus.connect(),
-            redis_client.connect()
-        )
+        await asyncio.gather(bus.connect(), redis_client.connect())
 
         # --- 3. Создание утилит и сервисов ---
         password_manager = PasswordManager()
@@ -63,7 +65,7 @@ class AuthContainer:
             session_factory=AsyncSessionLocal,
             jwt_manager=jwt_manager,
             password_manager=password_manager,
-            redis=redis_client
+            redis=redis_client,
         )
 
         # --- 4. Создание RPC-хендлеров ---

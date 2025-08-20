@@ -8,6 +8,7 @@ PayloadT = TypeVar("PayloadT")
 
 class RpcResponse(BaseModel, Generic[PayloadT]):
     """Стандартный конверт для ответа в RPC."""
+
     success: bool
     data: Optional[PayloadT] = None
     error_code: Optional[str] = None

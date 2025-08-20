@@ -71,7 +71,15 @@ class AuthIssueTokenRpc(BaseMicroserviceListener):
             body=resp.model_dump(mode="json"),
         )
 
-    async def _reply(self, *, reply_to: Optional[str], correlation_id: Optional[str], body: Dict[str, Any]) -> None:
+    async def _reply(
+        self,
+        *,
+        reply_to: Optional[str],
+        correlation_id: Optional[str],
+        body: Dict[str, Any],
+    ) -> None:
         if not reply_to:
             return
-        await self.bus.publish_rpc_response(reply_to=reply_to, response=body, correlation_id=correlation_id)
+        await self.bus.publish_rpc_response(
+            reply_to=reply_to, response=body, correlation_id=correlation_id
+        )

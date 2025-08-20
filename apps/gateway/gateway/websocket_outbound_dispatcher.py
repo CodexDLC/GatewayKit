@@ -19,10 +19,11 @@ class OutboundWebSocketDispatcher:
     Консьюмер исходящих сообщений из бекэндов и доставка их в WebSocket.
     Ждём новый envelope: BackendOutboundEnvelope.
     """
+
     def __init__(
         self,
         message_bus: IMessageBus,
-        client_connection_manager: ClientConnectionManager
+        client_connection_manager: ClientConnectionManager,
     ):
         self.message_bus = message_bus
         self.client_connection_manager = client_connection_manager
@@ -41,7 +42,9 @@ class OutboundWebSocketDispatcher:
             prefetch=64,
         )
 
-    async def _handle_outbound_message(self, body: Dict[str, Any], meta: Dict[str, Any]) -> None:
+    async def _handle_outbound_message(
+        self, body: Dict[str, Any], meta: Dict[str, Any]
+    ) -> None:
         """
         body: dict (JSON), meta: {message_id, correlation_id, routing_key, ...}
         Формат body соответствует BackendOutboundEnvelope.
@@ -65,16 +68,22 @@ class OutboundWebSocketDispatcher:
         # TODO: групповые рассылки подключим позже (delivery.mode == "group")
 
         if not targets:
-            logger.info(f"⚠️ Нет адресата в envelope (recipient/delivery пустые). Пропускаю. request_id={env.request_id}")
+            logger.info(
+                f"⚠️ Нет адресата в envelope (recipient/delivery пустые). Пропускаю. request_id={env.request_id}"
+            )
             return
 
         # --- Сформировать кадр ответа ---
         if env.status == "error":
-            err = env.error or ErrorDTO(code="common.UNKNOWN", message="Unhandled backend error")
+            err = env.error or ErrorDTO(
+                code="common.UNKNOWN", message="Unhandled backend error"
+            )
             frame = WSErrorFrame(error=err, request_id=env.request_id)
             payload_json = frame.model_dump_json()
         else:
-            server_status = "final" if env.final else ("update" if env.status == "update" else "ok")
+            server_status = (
+                "final" if env.final else ("update" if env.status == "update" else "ok")
+            )
             frame = WSEventFrame(
                 event=env.event,
                 status=server_status,
@@ -88,9 +97,13 @@ class OutboundWebSocketDispatcher:
         # --- Доставить всем таргетам ---
         delivered = 0
         for target_id in targets:
-            ok = await self.client_connection_manager.send_message_to_client(target_id, payload_json)
+            ok = await self.client_connection_manager.send_message_to_client(
+                target_id, payload_json
+            )
             if not ok:
-                logger.debug(f"Нет активного WS для '{target_id}' (corr={meta.get('correlation_id')})")
+                logger.debug(
+                    f"Нет активного WS для '{target_id}' (corr={meta.get('correlation_id')})"
+                )
             else:
                 delivered += 1
 

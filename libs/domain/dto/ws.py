@@ -11,23 +11,29 @@ ServerEventStatus = Literal["ok", "update", "final"]
 
 class WSCommandFrame(BaseMessage):
     type: Literal["command"] = "command"
-    client_msg_id: Optional[str] = Field(None, description="Идемпотентность в пределах WS-сессии")
+    client_msg_id: Optional[str] = Field(
+        None, description="Идемпотентность в пределах WS-сессии"
+    )
     domain: str
     command: str
     payload: Dict[str, Any] = Field(default_factory=dict)
 
+
 class WSPingFrame(BaseMessage):
     type: Literal["ping"] = "ping"
     nonce: Optional[str] = None
+
 
 class WSSubscribeFrame(BaseMessage):
     type: Literal["subscribe"] = "subscribe"
     topic: str
     filters: Optional[Dict[str, Any]] = None
 
+
 class WSUnsubscribeFrame(BaseMessage):
     type: Literal["unsubscribe"] = "unsubscribe"
     topic: str
+
 
 ClientWSFrame = Annotated[
     Union[WSCommandFrame, WSPingFrame, WSSubscribeFrame, WSUnsubscribeFrame],
@@ -36,18 +42,23 @@ ClientWSFrame = Annotated[
 
 # --------- WS: сервер -> клиент (discriminated union по полю "type")
 
+
 class WSHelloFrame(BaseMessage):
     type: Literal["hello"] = "hello"
     connection_id: str
     heartbeat_sec: int
 
+
 class WSPongFrame(BaseMessage):
     type: Literal["pong"] = "pong"
     nonce: Optional[str] = None
 
+
 class WSEventFrame(BaseMessage):
     type: Literal["event"] = "event"
-    event: str = Field(..., description="Напр. 'movement.move_character_to_location.result'")
+    event: str = Field(
+        ..., description="Напр. 'movement.move_character_to_location.result'"
+    )
     status: ServerEventStatus
     payload: Dict[str, Any] = Field(default_factory=dict)
     request_id: Optional[str] = None
@@ -55,10 +66,12 @@ class WSEventFrame(BaseMessage):
     tick: Optional[int] = None
     state_version: Optional[int] = None
 
+
 class WSErrorFrame(BaseMessage):
     type: Literal["error"] = "error"
     error: ErrorDTO
     request_id: Optional[str] = None
+
 
 ServerWSFrame = Annotated[
     Union[WSHelloFrame, WSPongFrame, WSEventFrame, WSErrorFrame],

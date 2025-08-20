@@ -14,6 +14,8 @@ class AuthLogoutRpcHandler:
         error = await self.auth_service.logout(dto.refresh_token)
 
         if error:
-            return RpcResponse(success=False, error_code=error, message="Logout failed.")
+            return RpcResponse(
+                success=False, error_code=error, message="Logout failed."
+            )
 
         return RpcResponse(success=True, data=LogoutResponse())

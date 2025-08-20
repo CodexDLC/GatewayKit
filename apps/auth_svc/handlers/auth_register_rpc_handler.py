@@ -15,16 +15,12 @@ class AuthRegisterRpcHandler:
 
         if error:
             return RpcResponse(
-                success=False,
-                error_code=error,
-                message="Registration failed."
+                success=False, error_code=error, message="Registration failed."
             )
 
         return RpcResponse(
             success=True,
             data=RegisterResponse(
-                account_id=account.id,
-                email=account.email,
-                username=account.username
-            )
+                account_id=account.id, email=account.email, username=account.username
+            ),
         )

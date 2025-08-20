@@ -19,5 +19,5 @@ app = create_service_app(
     # ---------------------------
     topology_declarator=declare_gateway_topology,
     listener_factories=[event_listener_factory],
-    include_rest_routers=ROUTERS_CONFIG
+    include_rest_routers=ROUTERS_CONFIG,
 )

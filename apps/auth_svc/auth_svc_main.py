@@ -11,7 +11,7 @@ from apps.auth_svc.listeners import (
     create_validate_token_listener_factory,
     create_register_listener_factory,
     create_refresh_token_listener_factory,
-    create_logout_listener_factory
+    create_logout_listener_factory,
 )
 
 app = create_service_app(
@@ -25,5 +25,5 @@ app = create_service_app(
         # --- ДОБАВЛЯЕМ НОВЫЕ ФАБРИКИ В СПИСОК ---
         create_refresh_token_listener_factory(),
         create_logout_listener_factory(),
-    ]
+    ],
 )

@@ -44,7 +44,9 @@ class CentralRedisClient:
     async def connect(self):
         """Асинхронно инициализирует пулы подключений к Redis."""
         if self.redis is None:
-            self.logger.info(f"🔧 Подключение к центральному Redis: {self._redis_url}...")
+            self.logger.info(
+                f"🔧 Подключение к центральному Redis: {self._redis_url}..."
+            )
             try:
                 # --- ИСПОЛЬЗУЕМ НОВЫЕ ПАРАМЕТРЫ ---
                 self.redis = redis_asyncio.from_url(
@@ -66,9 +68,13 @@ class CentralRedisClient:
                 # ---------------------------------
                 await self.redis.ping()
                 await self.redis_raw.ping()
-                self.logger.info("✅ Подключение к центральному Redis успешно установлено.")
+                self.logger.info(
+                    "✅ Подключение к центральному Redis успешно установлено."
+                )
             except Exception as e:
-                self.logger.critical(f"❌ Критическая ошибка при подключении к Redis: {e}", exc_info=True)
+                self.logger.critical(
+                    f"❌ Критическая ошибка при подключении к Redis: {e}", exc_info=True
+                )
                 self.redis = None
                 self.redis_raw = None
                 raise
@@ -82,6 +88,7 @@ class CentralRedisClient:
         self.redis = None
         self.redis_raw = None
         self.logger.info("✅ Соединения с Redis успешно закрыты.")
+
     # --- Методы для работы с JSON (ключ-значение) ---
 
     async def get_json(self, key: str) -> Optional[dict]:
@@ -94,7 +101,9 @@ class CentralRedisClient:
             try:
                 return json.loads(data_bytes.decode("utf-8"))
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                self.logger.error(f"Ошибка десериализации JSON для ключа '{key}': {e}", exc_info=True)
+                self.logger.error(
+                    f"Ошибка десериализации JSON для ключа '{key}': {e}", exc_info=True
+                )
                 return None
         return None
 
@@ -107,7 +116,10 @@ class CentralRedisClient:
             json_bytes = json.dumps(value, default=_json_serializer).encode("utf-8")
             await self.redis_raw.set(key, json_bytes, ex=ex)
         except Exception as e:
-            self.logger.error(f"Ошибка сериализации или сохранения JSON для ключа '{key}': {e}", exc_info=True)
+            self.logger.error(
+                f"Ошибка сериализации или сохранения JSON для ключа '{key}': {e}",
+                exc_info=True,
+            )
 
     # --- Методы для работы с Hashes ---
 
@@ -151,7 +163,9 @@ class CentralRedisClient:
             }
             await self.redis_raw.hset(name, mapping=encoded_mapping)
         except Exception as e:
-            self.logger.error(f"Ошибка при hsetall_json для хеша '{name}': {e}", exc_info=True)
+            self.logger.error(
+                f"Ошибка при hsetall_json для хеша '{name}': {e}", exc_info=True
+            )
 
     # --- Стандартные Redis команды ---
 

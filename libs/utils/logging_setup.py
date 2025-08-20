@@ -24,11 +24,11 @@ logging.Logger.success = success_log_method
 # --- 2. Конфигурация логгера ---
 class LoggerConfig:
     def __init__(self):
-        self.log_dir = os.path.join('/app', "logs")
-        self.container_id = os.getenv('CONTAINER_ID', 'default_container')
+        self.log_dir = os.path.join("/app", "logs")
+        self.container_id = os.getenv("CONTAINER_ID", "default_container")
 
         # Один JSON-файл для всех логов
-        self.log_file = os.path.join(self.log_dir, f'{self.container_id}.log.json')
+        self.log_file = os.path.join(self.log_dir, f"{self.container_id}.log.json")
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         self.backup_count = 5
 
@@ -47,14 +47,20 @@ class LoggerConfig:
 
     def _disable_sqlalchemy_logs(self):
         sql_loggers = [
-            "sqlalchemy", "sqlalchemy.engine", "sqlalchemy.pool",
-            "sqlalchemy.orm", "asyncpg",
+            "sqlalchemy",
+            "sqlalchemy.engine",
+            "sqlalchemy.pool",
+            "sqlalchemy.orm",
+            "asyncpg",
         ]
         for sql_logger in sql_loggers:
-            logging.getLogger(sql_logger).setLevel(logging.WARNING if not self.sql_echo else logging.INFO)
+            logging.getLogger(sql_logger).setLevel(
+                logging.WARNING if not self.sql_echo else logging.INFO
+            )
 
 
 # --- 3. Функции для получения обработчиков (ТОЛЬКО JSON) ---
+
 
 def get_json_console_handler(level, service_name: str):
     """Возвращает консольный обработчик с JSON-форматом."""
@@ -62,8 +68,10 @@ def get_json_console_handler(level, service_name: str):
     handler.setLevel(level)
     formatter = JsonFormatter()
     # Добавляем статическое поле 'svc', которое будет в каждой записи
-    logging.addLevelName(SUCCESS_LEVEL_NUM, "SUCCESS")  # Повторное добавление для Gunicorn
-    setattr(formatter, '_static_fields', {'svc': service_name})
+    logging.addLevelName(
+        SUCCESS_LEVEL_NUM, "SUCCESS"
+    )  # Повторное добавление для Gunicorn
+    setattr(formatter, "_static_fields", {"svc": service_name})
     handler.setFormatter(formatter)
     handler.addFilter(SecretMaskingFilter())  # Добавляем фильтр маскирования
     return handler
@@ -78,9 +86,11 @@ def get_json_file_handler(path, level, max_size, backups, service_name: str):
     except OSError as e:
         print(f"ERROR: Не удалось создать директорию логов '{log_dir}': {e}")
 
-    file_handler = RotatingFileHandler(path, maxBytes=max_size, backupCount=backups, encoding='utf-8')
+    file_handler = RotatingFileHandler(
+        path, maxBytes=max_size, backupCount=backups, encoding="utf-8"
+    )
     formatter = JsonFormatter()
-    setattr(formatter, '_static_fields', {'svc': service_name})
+    setattr(formatter, "_static_fields", {"svc": service_name})
     file_handler.setFormatter(formatter)
     file_handler.setLevel(level)
     file_handler.addFilter(SecretMaskingFilter())  # Добавляем фильтр маскирования
@@ -102,8 +112,11 @@ if not app_logger.handlers:
 
     # Файловый обработчик
     file_handler = get_json_file_handler(
-        config.log_file, config.file_log_level, config.max_file_size,
-        config.backup_count, service_name
+        config.log_file,
+        config.file_log_level,
+        config.max_file_size,
+        config.backup_count,
+        service_name,
     )
     app_logger.addHandler(file_handler)
 

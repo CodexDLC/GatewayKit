@@ -1,7 +1,9 @@
 # libs/messaging/rabbitmq_names.py
 
+
 class Exchanges:
     """Центральные обменники."""
+
     RPC = "core.rpc.v1"
     EVENTS = "core.events.v1"
     DLX = "core.dlx.v1"
@@ -12,6 +14,7 @@ class Queues:
     Базовые имена RPC очередей.
     Суффиксы .retry и .dlq генерируются автоматически при необходимости.
     """
+
     AUTH_ISSUE_TOKEN_RPC = "core.auth.rpc.issue_token.v1"
     AUTH_VALIDATE_TOKEN_RPC = "core.auth.rpc.validate_token.v1"
     AUTH_REGISTER_RPC = "core.auth.rpc.register.v1"

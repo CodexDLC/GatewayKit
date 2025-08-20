@@ -11,11 +11,22 @@ from apps.auth_svc.handlers.auth_logout_rpc_handler import AuthLogoutRpcHandler
 from libs.domain.dto.rpc import RpcResponse
 from libs.app.errors import ErrorCode
 
+
 class AuthLogoutRpc(BaseMicroserviceListener):
-    def __init__(self, *, queue_name: str, message_bus: IMessageBus,
-                 handler: AuthLogoutRpcHandler, **kwargs) -> None:
-        super().__init__(name="auth.logout.rpc", queue_name=queue_name,
-                         message_bus=message_bus, **kwargs)
+    def __init__(
+        self,
+        *,
+        queue_name: str,
+        message_bus: IMessageBus,
+        handler: AuthLogoutRpcHandler,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            name="auth.logout.rpc",
+            queue_name=queue_name,
+            message_bus=message_bus,
+            **kwargs,
+        )
         self._handler = handler
 
     async def process_message(self, data: Dict[str, Any], meta: Dict[str, Any]) -> None:
@@ -23,7 +34,9 @@ class AuthLogoutRpc(BaseMicroserviceListener):
         try:
             req = LogoutRequest.model_validate(payload)
         except ValidationError as ve:
-            rpc_response = RpcResponse(success=False, error_code=ErrorCode.VALIDATION_FAILED, message=str(ve))
+            rpc_response = RpcResponse(
+                success=False, error_code=ErrorCode.VALIDATION_FAILED, message=str(ve)
+            )
             await self._reply(meta, rpc_response)
             return
 
@@ -40,5 +53,5 @@ class AuthLogoutRpc(BaseMicroserviceListener):
         await self.bus.publish_rpc_response(
             reply_to=reply_to,
             response=rpc_response.model_dump(mode="json"),
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )

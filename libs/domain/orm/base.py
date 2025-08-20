@@ -16,4 +16,5 @@ metadata = MetaData(naming_convention=convention)
 
 class Base(DeclarativeBase):
     """Базовый класс для всех ORM моделей."""
+
     metadata = metadata

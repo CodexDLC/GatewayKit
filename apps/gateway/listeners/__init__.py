@@ -10,14 +10,22 @@ from libs.messaging.rabbitmq_names import Exchanges as Ex
 
 from .event_listener import EventBroadcastListener
 
-ListenerFactory = Callable[[IMessageBus, Container], Awaitable[BaseMicroserviceListener]]
+ListenerFactory = Callable[
+    [IMessageBus, Container], Awaitable[BaseMicroserviceListener]
+]
+
 
 # --- ИЗМЕНЕНИЕ: Фабрика больше не принимает аргументов ---
 def create_event_broadcast_listener_factory() -> ListenerFactory:
     """Фабрика для создания слушателя широковещательных событий."""
-    async def factory(bus: IMessageBus, container: GatewayContainer) -> BaseMicroserviceListener:
+
+    async def factory(
+        bus: IMessageBus, container: GatewayContainer
+    ) -> BaseMicroserviceListener:
         queue_name = f"gateway.events.broadcast.{uuid.uuid4().hex}"
-        await bus.declare_queue(queue_name, durable=False, auto_delete=True, exclusive=True)
+        await bus.declare_queue(
+            queue_name, durable=False, auto_delete=True, exclusive=True
+        )
         await bus.bind_queue(queue_name, Ex.EVENTS, routing_key="#")
 
         # --- ДОСТАЕМ МЕНЕДЖЕР ИЗ КОНТЕЙНЕРА ---
@@ -30,4 +38,5 @@ def create_event_broadcast_listener_factory() -> ListenerFactory:
             client_manager=client_manager,
             prefetch=128,
         )
+
     return factory

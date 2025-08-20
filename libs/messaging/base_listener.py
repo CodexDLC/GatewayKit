@@ -26,14 +26,14 @@ class BaseMicroserviceListener(ABC):
     """
 
     def __init__(
-            self,
-            *,
-            name: str,
-            queue_name: str,
-            message_bus: IMessageBus,
-            prefetch: int = 32,
-            consumer_count: int = 1,
-            envelope_model: Optional[Type[BaseModel]] = None,
+        self,
+        *,
+        name: str,
+        queue_name: str,
+        message_bus: IMessageBus,
+        prefetch: int = 32,
+        consumer_count: int = 1,
+        envelope_model: Optional[Type[BaseModel]] = None,
     ) -> None:
         self.name = name
         self.queue_name = queue_name
@@ -62,7 +62,9 @@ class BaseMicroserviceListener(ABC):
 
         # Регистрируем нужное число consumer'ов
         for _ in range(self.consumer_count):
-            await self.bus.consume(self.queue_name, self._on_message, prefetch=self.prefetch)
+            await self.bus.consume(
+                self.queue_name, self._on_message, prefetch=self.prefetch
+            )
 
         self._started = True
 
@@ -92,16 +94,24 @@ class BaseMicroserviceListener(ABC):
             death_headers = msg.headers.get("x-death", [])
             retry_count = 0
             # --- ИСПРАВЛЕНИЕ: Явная проверка типа ---
-            if isinstance(death_headers, list) and death_headers and isinstance(death_headers[0], dict):
+            if (
+                isinstance(death_headers, list)
+                and death_headers
+                and isinstance(death_headers[0], dict)
+            ):
                 retry_count = death_headers[0].get("count", 0)
 
             if retry_count >= self.RPC_MAX_RETRIES:
                 log.error(
                     "[%s] Message exceeded max retries (%d). Moving to DLQ. meta=%s",
-                    self.name, self.RPC_MAX_RETRIES, msg.info()
+                    self.name,
+                    self.RPC_MAX_RETRIES,
+                    msg.info(),
                 )
                 await self._move_to_dlq(msg)
-                await msg.ack()  # Подтверждаем исходное, т.к. мы его обработали (переслали)
+                await (
+                    msg.ack()
+                )  # Подтверждаем исходное, т.к. мы его обработали (переслали)
                 return
 
             # Парсим тело сообщения
@@ -111,7 +121,9 @@ class BaseMicroserviceListener(ABC):
             # Валидация, если есть модель
             data_to_process = body
             if self.envelope_model:
-                data_to_process = self.envelope_model.model_validate(body).model_dump(mode="json")
+                data_to_process = self.envelope_model.model_validate(body).model_dump(
+                    mode="json"
+                )
 
             # Вызываем основную логику обработчика
             await self.process_message(data_to_process, meta)
@@ -121,7 +133,9 @@ class BaseMicroserviceListener(ABC):
             # Нерепарабельная ошибка валидации -> сразу в DLQ
             log.warning(
                 "[%s] Validation error. Moving to DLQ. Error: %s, meta=%s",
-                self.name, ve, msg.info()
+                self.name,
+                ve,
+                msg.info(),
             )
             await self._move_to_dlq(msg)
             await msg.ack()
@@ -129,9 +143,12 @@ class BaseMicroserviceListener(ABC):
             # Любая другая (предположительно временная) ошибка -> в retry
             log.exception(
                 "[%s] Handler failed. Sending to retry queue. meta=%s",
-                self.name, msg.info()
+                self.name,
+                msg.info(),
             )
-            await msg.nack(requeue=False)  # requeue=False отправляет в DLX, который у нас ведет в retry-очередь
+            await msg.nack(
+                requeue=False
+            )  # requeue=False отправляет в DLX, который у нас ведет в retry-очередь
 
     async def _move_to_dlq(self, msg: aio_pika.abc.AbstractIncomingMessage):
         """Формирует и публикует сообщение в соответствующую DLQ."""
@@ -140,9 +157,10 @@ class BaseMicroserviceListener(ABC):
             exchange_name=Ex.DLX,
             routing_key=dlq_routing_key,
             message=json.loads(msg.body),  # Отправляем исходное тело
-            correlation_id=msg.correlation_id
+            correlation_id=msg.correlation_id,
         )
 
     @abstractmethod
-    async def process_message(self, data: Dict[str, Any], meta: Dict[str, Any]) -> None:
-        ...
+    async def process_message(
+        self, data: Dict[str, Any], meta: Dict[str, Any]
+    ) -> None: ...

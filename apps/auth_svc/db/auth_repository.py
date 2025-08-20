@@ -46,11 +46,7 @@ class AuthRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_account(
-            self,
-            dto: RegisterRequest,
-            password_hash: str
-    ) -> Account:
+    async def create_account(self, dto: RegisterRequest, password_hash: str) -> Account:
         """
         Создает новый Account и связанные с ним Credentials в одной транзакции.
         """
@@ -73,10 +69,7 @@ class AuthRepository:
 
     async def set_last_login(self, account_id: int, login_time: datetime) -> None:
         """Обновляет время последнего входа для аккаунта."""
-        stmt = (
-            select(Credentials)
-            .where(Credentials.account_id == account_id)
-        )
+        stmt = select(Credentials).where(Credentials.account_id == account_id)
         result = await self.session.execute(stmt)
         credentials = result.scalar_one_or_none()
         if credentials:
@@ -89,7 +82,7 @@ class AuthRepository:
         token_hash: str,
         expires_at: datetime,
         user_agent: str | None,
-        ip: str | None
+        ip: str | None,
     ) -> RefreshToken:
         """Сохраняет новый refresh-токен в БД."""
         new_token = RefreshToken(
@@ -101,7 +94,7 @@ class AuthRepository:
             ip=ip,
         )
         self.session.add(new_token)
-        await self.session.flush() # Получаем ID и другие default-значения
+        await self.session.flush()  # Получаем ID и другие default-значения
         return new_token
 
     async def get_refresh_token_by_jti(self, jti: uuid.UUID) -> Optional[RefreshToken]:
@@ -114,4 +107,3 @@ class AuthRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
-

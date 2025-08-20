@@ -42,7 +42,7 @@ engine: AsyncEngine = create_async_engine(
     echo=DB_ECHO,
     poolclass=NullPool,  # в контейнерах обычно без пула; при необходимости — заменить на пул
     future=True,
-    connect_args=connect_args, # <-- ДОБАВЛЕНО
+    connect_args=connect_args,  # <-- ДОБАВЛЕНО
 )
 
 # фабрика сессий (используйте её в DI или напрямую через get_db_session)
@@ -51,6 +51,7 @@ AsyncSessionLocal = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
 
 # -----------------------------------------------------------------------------
 # Сессии
@@ -74,7 +75,9 @@ async def get_db_session_no_cache() -> AsyncGenerator[AsyncSession, None]:
     Альтернативный способ — создаёт отдельную фабрику на лету.
     Использовать редко (например, для отладки/особых нужд).
     """
-    _local = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    _local = async_sessionmaker(
+        bind=engine, class_=AsyncSession, expire_on_commit=False
+    )
     session: AsyncSession = _local()
     try:
         yield session
@@ -87,6 +90,7 @@ def get_db_session_orm() -> async_sessionmaker[AsyncSession]:
     Возвращает фабрику сессий (например, для фоновых задач).
     """
     return AsyncSessionLocal
+
 
 # -----------------------------------------------------------------------------
 # Диагностика / сырой доступ
@@ -118,5 +122,3 @@ async def get_raw_connection():
         finally:
             # raw закрывается вместе с conn при выходе из контекста
             pass
-
-

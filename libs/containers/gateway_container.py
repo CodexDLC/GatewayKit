@@ -8,11 +8,13 @@ from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
 # --- НОВЫЙ ИМПОРТ ---
 from apps.gateway.gateway.client_connection_manager import ClientConnectionManager
 
+
 @dataclass
 class GatewayContainer:
     """
     DI-контейнер для Gateway.
     """
+
     bus: IMessageBus
     # --- НОВОЕ СВОЙСТВО ---
     client_connection_manager: ClientConnectionManager
@@ -30,10 +32,7 @@ class GatewayContainer:
         # --- СОЗДАЕМ МЕНЕДЖЕР ЗДЕСЬ ---
         client_manager = ClientConnectionManager()
 
-        return cls(
-            bus=bus,
-            client_connection_manager=client_manager
-        )
+        return cls(bus=bus, client_connection_manager=client_manager)
 
     async def shutdown(self):
         """Корректно освобождает ресурсы."""

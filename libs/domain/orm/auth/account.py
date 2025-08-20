@@ -3,13 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Dict, Any
 
-from sqlalchemy import (
-    BigInteger,
-    String,
-    Boolean,
-    Enum,
-    func
-)
+from sqlalchemy import BigInteger, String, Boolean, Enum, func
 from sqlalchemy.dialects.postgresql import JSONB, CITEXT
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,9 +17,7 @@ if TYPE_CHECKING:
 
 class Account(Base):
     __tablename__ = "accounts"
-    __table_args__ = (
-        {"schema": "auth"},
-    )
+    __table_args__ = ({"schema": "auth"},)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
@@ -38,17 +30,17 @@ class Account(Base):
     status: Mapped[AccountStatus] = mapped_column(
         Enum(AccountStatus, name="account_status_enum", schema="auth"),
         nullable=False,
-        default=AccountStatus.ACTIVE
+        default=AccountStatus.ACTIVE,
     )
     role: Mapped[AccountRole] = mapped_column(
         Enum(AccountRole, name="account_role_enum", schema="auth"),
         nullable=False,
-        default=AccountRole.USER
+        default=AccountRole.USER,
     )
 
     twofa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     linked_platforms: Mapped[Dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, server_default=func.jsonb('{}')
+        JSONB, nullable=False, server_default=func.jsonb("{}")
     )
 
     created_at: Mapped[datetime] = mapped_column(

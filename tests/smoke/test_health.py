@@ -11,6 +11,7 @@ def test_gateway_health_check():
     assert data["ready"] is True
     assert data["dependencies"]["rabbitmq"] is True
 
+
 def test_auth_svc_health_check(auth_svc_health_url: str):
     """Проверяет, что Auth Service здоров."""
     response = httpx.get(auth_svc_health_url)

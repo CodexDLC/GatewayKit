@@ -31,6 +31,8 @@ class EventBroadcastListener(BaseMicroserviceListener):
         if not active_clients:
             return
 
-        logger.info(f"Broadcasting event '{routing_key}' to {len(active_clients)} clients.")
+        logger.info(
+            f"Broadcasting event '{routing_key}' to {len(active_clients)} clients."
+        )
         for client_id in active_clients:
             await self.client_manager.send_message_to_client(client_id, message_json)

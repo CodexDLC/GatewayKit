@@ -10,7 +10,9 @@ from libs.utils.logging_setup import app_logger as logger
 
 
 @asynccontextmanager
-async def get_worker_db_session() -> AsyncGenerator[AsyncSession, None]: # 🔥 ИЗМЕНЕНИЕ: repository_manager удален
+async def get_worker_db_session() -> (
+    AsyncGenerator[AsyncSession, None]
+):  # 🔥 ИЗМЕНЕНИЕ: repository_manager удален
     """
     Предоставляет асинхронную сессию SQLAlchemy для использования в ARQ воркерах
     с управлением транзакцией (commit/rollback) и автоматическим закрытием.
@@ -23,13 +25,17 @@ async def get_worker_db_session() -> AsyncGenerator[AsyncSession, None]: # 🔥 
         await session.commit()
         logger.debug("Транзакция сессии БД для задачи ARQ воркера успешно закоммичена.")
     except Exception as e:
-        logger.error(f"Ошибка в сессии БД задачи ARQ воркера, выполняется откат: {e}", exc_info=True)
+        logger.error(
+            f"Ошибка в сессии БД задачи ARQ воркера, выполняется откат: {e}",
+            exc_info=True,
+        )
         if session.in_transaction():
             await session.rollback()
         raise
     finally:
         await session.close()
         logger.debug("Сессия БД для задачи ARQ воркера закрыта.")
+
 
 async def get_raw_worker_session() -> AsyncSession:
     """

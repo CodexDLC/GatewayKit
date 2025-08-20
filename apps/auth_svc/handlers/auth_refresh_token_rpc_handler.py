@@ -14,6 +14,8 @@ class AuthRefreshTokenRpcHandler:
         token_data, error = await self.auth_service.refresh_token(dto.refresh_token)
 
         if error:
-            return RpcResponse(success=False, error_code=error, message="Failed to refresh token.")
+            return RpcResponse(
+                success=False, error_code=error, message="Failed to refresh token."
+            )
 
         return RpcResponse(success=True, data=RefreshTokenResponse(**token_data))

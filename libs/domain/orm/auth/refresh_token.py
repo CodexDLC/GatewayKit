@@ -16,18 +16,16 @@ if TYPE_CHECKING:
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
-    __table_args__ = (
-        {"schema": "auth"},
-    )
+    __table_args__ = ({"schema": "auth"},)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     account_id: Mapped[int] = mapped_column(
-        ForeignKey("auth.accounts.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        ForeignKey("auth.accounts.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    jti: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, nullable=False)
+    jti: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), unique=True, nullable=False
+    )
     token_hash: Mapped[str]
 
     user_agent: Mapped[str | None]

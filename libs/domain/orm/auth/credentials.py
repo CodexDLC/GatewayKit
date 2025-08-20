@@ -14,14 +14,10 @@ if TYPE_CHECKING:
 
 class Credentials(Base):
     __tablename__ = "credentials"
-    __table_args__ = (
-        {"schema": "auth"},
-    )
+    __table_args__ = ({"schema": "auth"},)
 
     account_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("auth.accounts.id", ondelete="CASCADE"),
-        primary_key=True
+        BigInteger, ForeignKey("auth.accounts.id", ondelete="CASCADE"), primary_key=True
     )
 
     password_hash: Mapped[str]

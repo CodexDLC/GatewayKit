@@ -5,27 +5,27 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 # --- ИСПРАВЛЕНИЕ: Handler теперь принимает сырое сообщение от aio_pika ---
 import aio_pika
+
 MessageHandler = Callable[[aio_pika.abc.AbstractIncomingMessage], Awaitable[None]]
 # --------------------------------------------------------------------
+
 
 class IMessageBus(ABC):
     """Абстракция над шиной сообщений (JSON)."""
 
     @abstractmethod
-    async def is_connected(self) -> bool:
-        ...
+    async def is_connected(self) -> bool: ...
 
     @abstractmethod
-    async def connect(self) -> None:
-        ...
+    async def connect(self) -> None: ...
 
     @abstractmethod
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
     @abstractmethod
-    async def declare_exchange(self, name: str, type_: str = "direct", durable: bool = True) -> None:
-        ...
+    async def declare_exchange(
+        self, name: str, type_: str = "direct", durable: bool = True
+    ) -> None: ...
 
     @abstractmethod
     async def declare_queue(
@@ -41,12 +41,12 @@ class IMessageBus(ABC):
         dead_letter_exchange: Optional[str] = None,
         dead_letter_routing_key: Optional[str] = None,
         max_priority: Optional[int] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abstractmethod
-    async def bind_queue(self, queue_name: str, exchange_name: str, routing_key: str) -> None:
-        ...
+    async def bind_queue(
+        self, queue_name: str, exchange_name: str, routing_key: str
+    ) -> None: ...
 
     @abstractmethod
     async def publish(
@@ -60,8 +60,7 @@ class IMessageBus(ABC):
         reply_to: Optional[str] = None,
         headers: Optional[Dict[str, Any]] = None,
         persistent: bool = True,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abstractmethod
     async def consume(
@@ -75,8 +74,9 @@ class IMessageBus(ABC):
         ...
 
     @abstractmethod
-    async def publish_rpc_response(self, reply_to: str, response: Dict[str, Any], *, correlation_id: Optional[str]) -> None:
-        ...
+    async def publish_rpc_response(
+        self, reply_to: str, response: Dict[str, Any], *, correlation_id: Optional[str]
+    ) -> None: ...
 
     @abstractmethod
     async def call_rpc(

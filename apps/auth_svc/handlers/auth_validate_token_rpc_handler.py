@@ -5,6 +5,7 @@ import jwt  # PyJWT
 from apps.auth_svc.i_auth_handler import IAuthHandler
 from libs.domain.dto.auth import ValidateTokenRequest, ValidateTokenResponse
 
+
 class AuthValidateTokenRpcHandler(IAuthHandler):
     """
     Реализует валидацию JWT:
@@ -12,6 +13,7 @@ class AuthValidateTokenRpcHandler(IAuthHandler):
     - проверка exp (истечения)
     - при наличии expected_iss/aud — также их сверка
     """
+
     def __init__(self, *, jwt_secret: str, jwt_alg: str = "HS256") -> None:
         self._secret = jwt_secret
         self._alg = jwt_alg
@@ -23,8 +25,8 @@ class AuthValidateTokenRpcHandler(IAuthHandler):
                 self._secret,
                 algorithms=[self._alg],
                 options={"require": ["exp", "iat"]},  # требуем exp/iat
-                audience=dto.expected_aud,            # если None — аудитория не проверяется
-                issuer=dto.expected_iss,              # если None — iss не проверяется
+                audience=dto.expected_aud,  # если None — аудитория не проверяется
+                issuer=dto.expected_iss,  # если None — iss не проверяется
             )
             sub = decoded.get("sub")
             user_id = str(sub) if sub is not None else None
@@ -35,7 +37,11 @@ class AuthValidateTokenRpcHandler(IAuthHandler):
                 account_id = None
 
             aud = decoded.get("aud")
-            client_id = aud if isinstance(aud, str) else (aud[0] if isinstance(aud, list) and aud else None)
+            client_id = (
+                aud
+                if isinstance(aud, str)
+                else (aud[0] if isinstance(aud, list) and aud else None)
+            )
 
             scope_raw = decoded.get("scope") or ""
             scopes = [s for s in scope_raw.split() if s]
@@ -51,12 +57,22 @@ class AuthValidateTokenRpcHandler(IAuthHandler):
             )
 
         except jwt.ExpiredSignatureError as e:
-            return ValidateTokenResponse(valid=False, error_code="auth.TOKEN_EXPIRED", error_message=str(e))
+            return ValidateTokenResponse(
+                valid=False, error_code="auth.TOKEN_EXPIRED", error_message=str(e)
+            )
         except jwt.InvalidAudienceError as e:
-            return ValidateTokenResponse(valid=False, error_code="auth.BAD_AUDIENCE", error_message=str(e))
+            return ValidateTokenResponse(
+                valid=False, error_code="auth.BAD_AUDIENCE", error_message=str(e)
+            )
         except jwt.InvalidIssuerError as e:
-            return ValidateTokenResponse(valid=False, error_code="auth.BAD_ISSUER", error_message=str(e))
+            return ValidateTokenResponse(
+                valid=False, error_code="auth.BAD_ISSUER", error_message=str(e)
+            )
         except jwt.InvalidTokenError as e:
-            return ValidateTokenResponse(valid=False, error_code="auth.INVALID_TOKEN", error_message=str(e))
+            return ValidateTokenResponse(
+                valid=False, error_code="auth.INVALID_TOKEN", error_message=str(e)
+            )
         except Exception as e:
-            return ValidateTokenResponse(valid=False, error_code="auth.INTERNAL_ERROR", error_message=str(e))
+            return ValidateTokenResponse(
+                valid=False, error_code="auth.INTERNAL_ERROR", error_message=str(e)
+            )

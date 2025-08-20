@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from pydantic_settings import BaseSettings
 
 from .logging_middleware import LoggingMiddleware
-from libs.containers.auth_container import AuthContainer  # Уточняем тип для проверок
 from libs.messaging.i_message_bus import IMessageBus
 from libs.utils.logging_setup import app_logger as log
 from libs.app.health import create_readiness_router
@@ -22,11 +21,11 @@ ContainerFactory = Callable[[], Awaitable[ContainerT]]
 
 @asynccontextmanager
 async def service_lifespan(
-        app: FastAPI,
-        *,
-        container_factory: ContainerFactory,
-        topology_declarator: TopologyDeclarator,
-        listener_factories: List[ListenerFactory]
+    app: FastAPI,
+    *,
+    container_factory: ContainerFactory,
+    topology_declarator: TopologyDeclarator,
+    listener_factories: List[ListenerFactory],
 ):
     """
     Управляет жизненным циклом сервиса: DI, шина, слушатели.
@@ -62,21 +61,23 @@ async def service_lifespan(
             try:
                 await listener.stop()
             except Exception:
-                log.exception(f"Ошибка при остановке слушателя {getattr(listener, 'name', repr(listener))}")
+                log.exception(
+                    f"Ошибка при остановке слушателя {getattr(listener, 'name', repr(listener))}"
+                )
 
-        if hasattr(app.state, 'container'):
+        if hasattr(app.state, "container"):
             await app.state.container.shutdown()
         log.info("Сервис остановлен.")
 
 
 def create_service_app(
-        *,
-        service_name: str,
-        container_factory: ContainerFactory[ContainerT],
-        topology_declarator: TopologyDeclarator,
-        listener_factories: Optional[List[ListenerFactory]] = None,
-        settings_class: Optional[Type[BaseSettings]] = None,
-        include_rest_routers: Optional[List] = None,
+    *,
+    service_name: str,
+    container_factory: ContainerFactory[ContainerT],
+    topology_declarator: TopologyDeclarator,
+    listener_factories: Optional[List[ListenerFactory]] = None,
+    settings_class: Optional[Type[BaseSettings]] = None,
+    include_rest_routers: Optional[List] = None,
 ) -> FastAPI:
     """
     Фабрика для создания FastAPI-приложения микросервиса.
@@ -110,7 +111,7 @@ def create_service_app(
     # 2. Проверка PostgreSQL
     async def db_check():
         # Проверка будет вызвана только если у контейнера есть фабрика сессий
-        if hasattr(app.state.container, 'session_factory'):
+        if hasattr(app.state.container, "session_factory"):
             is_ready = await check_db_connection()
             return "postgres", is_ready
         return None  # Сигнал, что проверка не нужна
@@ -120,7 +121,7 @@ def create_service_app(
     # 3. Проверка Redis
     async def redis_check():
         # Проверка будет вызвана только если у контейнера есть клиент Redis
-        if hasattr(app.state.container, 'redis') and app.state.container.redis:
+        if hasattr(app.state.container, "redis") and app.state.container.redis:
             try:
                 is_ready = await app.state.container.redis.redis.ping()
                 return "redis", bool(is_ready)
@@ -132,14 +133,18 @@ def create_service_app(
     # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     # Фильтруем None значения перед передачей в роутер
-    app.include_router(create_readiness_router([check for check in readiness_checks if check is not None]))
+    app.include_router(
+        create_readiness_router(
+            [check for check in readiness_checks if check is not None]
+        )
+    )
 
     if include_rest_routers:
         for router_config in include_rest_routers:
             app.include_router(
                 router_config["router"],
                 prefix=router_config.get("prefix", ""),
-                tags=router_config.get("tags", [])
+                tags=router_config.get("tags", []),
             )
 
     log.info(f"Приложение '{service_name}' сконфигурировано.")

@@ -16,9 +16,7 @@ class AuthIssueTokenRpcHandler:
 
         if error:
             return RpcResponse(
-                success=False,
-                error_code=error,
-                message="Failed to issue token."
+                success=False, error_code=error, message="Failed to issue token."
             )
 
         return RpcResponse(
@@ -26,6 +24,6 @@ class AuthIssueTokenRpcHandler:
             data=IssueTokenResponse(
                 token=token,
                 expires_in=3600,  # TODO: Брать из настроек
-                account_id=0  # TODO: Вернуть реальный ID
-            )
+                account_id=0,  # TODO: Вернуть реальный ID
+            ),
         )

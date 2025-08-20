@@ -14,10 +14,10 @@ RPC_RETRY_DELAY_MS = int(os.getenv("RPC_RETRY_DELAY_MS", "5000"))
 
 
 async def declare_rpc_queue_with_retry(
-        bus: IMessageBus,
-        base_queue_name: str,
-        rpc_exchange: str = Ex.RPC,
-        dlx_exchange: str = Ex.DLX,
+    bus: IMessageBus,
+    base_queue_name: str,
+    rpc_exchange: str = Ex.RPC,
+    dlx_exchange: str = Ex.DLX,
 ):
     """
     Объявляет полную группу для одного RPC-метода: основная, retry и dlq очереди.

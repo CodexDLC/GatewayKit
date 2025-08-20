@@ -5,5 +5,4 @@ auth_routers = [
         "router": auth_routes_router,
         "tags": ["Authentication"],
     },
-    
 ]

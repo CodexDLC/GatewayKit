@@ -37,7 +37,6 @@ ERROR_CODE_TO_HTTP_STATUS = {
     # --- ДОБАВЛЯЕМ МАППИНГ ДЛЯ НОВЫХ ОШИБОК ---
     ErrorCode.AUTH_REFRESH_INVALID: status.HTTP_401_UNAUTHORIZED,
     ErrorCode.AUTH_REFRESH_EXPIRED: status.HTTP_401_UNAUTHORIZED,
-
     ErrorCode.VALIDATION_FAILED: status.HTTP_400_BAD_REQUEST,
     ErrorCode.RPC_TIMEOUT: status.HTTP_504_GATEWAY_TIMEOUT,
     ErrorCode.RPC_BAD_RESPONSE: status.HTTP_502_BAD_GATEWAY,
@@ -48,4 +47,6 @@ ERROR_CODE_TO_HTTP_STATUS = {
 
 def get_http_status(error_code: str) -> int:
     """Возвращает HTTP статус для кода ошибки, по умолчанию 500."""
-    return ERROR_CODE_TO_HTTP_STATUS.get(error_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return ERROR_CODE_TO_HTTP_STATUS.get(
+        error_code, status.HTTP_500_INTERNAL_SERVER_ERROR
+    )

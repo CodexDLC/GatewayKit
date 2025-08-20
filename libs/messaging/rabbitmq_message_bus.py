@@ -13,12 +13,19 @@ from libs.utils.logging_setup import app_logger as logger
 
 try:
     import orjson  # type: ignore
+
     _dumps = lambda o: orjson.dumps(o)
 except ImportError:
-    _dumps = lambda o: json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    _dumps = lambda o: json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
 
 import aio_pika
-from aio_pika.abc import AbstractIncomingMessage, AbstractRobustChannel, AbstractRobustConnection
+from aio_pika.abc import (
+    AbstractIncomingMessage,
+    AbstractRobustChannel,
+    AbstractRobustConnection,
+)
 from .i_message_bus import IMessageBus, MessageHandler
 
 
@@ -28,7 +35,13 @@ class RabbitMQMessageBus(IMessageBus):
     Реализует Direct Reply-to для RPC и publisher confirms для надежности.
     """
 
-    def __init__(self, dsn: str, *, publisher_confirms: bool = True, reconnect_backoff: float = 1.0) -> None:
+    def __init__(
+        self,
+        dsn: str,
+        *,
+        publisher_confirms: bool = True,
+        reconnect_backoff: float = 1.0,
+    ) -> None:
         self._dsn = dsn
         self._pub_confirms = publisher_confirms
         self._backoff = reconnect_backoff
@@ -62,7 +75,9 @@ class RabbitMQMessageBus(IMessageBus):
             try:
                 logger.info("%s (attempt %s)", log_info, attempt)
                 self._conn = await aio_pika.connect_robust(self._dsn)
-                self._chan = await self._conn.channel(publisher_confirms=getattr(self, "_pub_confirms", True))
+                self._chan = await self._conn.channel(
+                    publisher_confirms=getattr(self, "_pub_confirms", True)
+                )
                 logger.success("bus: connected to RabbitMQ successfully")
 
                 # Запускаем слушателя RPC-ответов после успешного подключения
@@ -70,7 +85,9 @@ class RabbitMQMessageBus(IMessageBus):
                 return
             except Exception as e:
                 if deadline is not None and time.monotonic() >= deadline:
-                    logger.error("bus: connect timeout after %s attempts: %s", attempt, e)
+                    logger.error(
+                        "bus: connect timeout after %s attempts: %s", attempt, e
+                    )
                     raise
                 await asyncio.sleep(backoff)
 
@@ -79,7 +96,9 @@ class RabbitMQMessageBus(IMessageBus):
             return
 
         queue = await self._chan.get_queue("amq.rabbitmq.reply-to", ensure=True)
-        self._reply_to_consumer_tag = await queue.consume(self._on_rpc_reply, no_ack=True)
+        self._reply_to_consumer_tag = await queue.consume(
+            self._on_rpc_reply, no_ack=True
+        )
         logger.info("Direct Reply-to consumer has been started.")
 
     async def _on_rpc_reply(self, message: AbstractIncomingMessage):
@@ -97,8 +116,12 @@ class RabbitMQMessageBus(IMessageBus):
                 future.set_exception(e)
 
     async def is_connected(self) -> bool:
-        return self._conn is not None and not self._conn.is_closed and \
-            self._chan is not None and not self._chan.is_closed
+        return (
+            self._conn is not None
+            and not self._conn.is_closed
+            and self._chan is not None
+            and not self._chan.is_closed
+        )
 
     async def close(self) -> None:
         self._closing = True
@@ -121,19 +144,25 @@ class RabbitMQMessageBus(IMessageBus):
         assert self._chan is not None
         return self._chan
 
-    async def declare_exchange(self, name: str, type_: str = "direct", durable: bool = True) -> None:
+    async def declare_exchange(
+        self, name: str, type_: str = "direct", durable: bool = True
+    ) -> None:
         ch = await self._ensure()
         exchange_type = aio_pika.ExchangeType(type_)
         await ch.declare_exchange(name, exchange_type, durable=durable)
 
-    async def declare_queue(self, name: str, *,
-                            durable: bool = True,
-                            exclusive: bool = False,  # <-- ДОБАВЬТЕ
-                            auto_delete: bool = False,  # <-- ДОБАВЬТЕ
-                            arguments: Optional[Dict[str, Any]] = None,
-                            dead_letter_exchange: Optional[str] = None,
-                            dead_letter_routing_key: Optional[str] = None,
-                            max_priority: Optional[int] = None) -> None:
+    async def declare_queue(
+        self,
+        name: str,
+        *,
+        durable: bool = True,
+        exclusive: bool = False,  # <-- ДОБАВЬТЕ
+        auto_delete: bool = False,  # <-- ДОБАВЬТЕ
+        arguments: Optional[Dict[str, Any]] = None,
+        dead_letter_exchange: Optional[str] = None,
+        dead_letter_routing_key: Optional[str] = None,
+        max_priority: Optional[int] = None,
+    ) -> None:
         ch = await self._ensure()
         args: Dict[str, Any] = arguments or {}
         if dead_letter_exchange:
@@ -149,26 +178,40 @@ class RabbitMQMessageBus(IMessageBus):
             durable=durable,
             exclusive=exclusive,
             auto_delete=auto_delete,
-            arguments=args or None
+            arguments=args or None,
         )
 
-    async def bind_queue(self, queue_name: str, exchange_name: str, routing_key: str) -> None:
+    async def bind_queue(
+        self, queue_name: str, exchange_name: str, routing_key: str
+    ) -> None:
         ch = await self._ensure()
         q = await ch.get_queue(queue_name, ensure=True)
         ex = await ch.get_exchange(exchange_name, ensure=True)
         await q.bind(ex, routing_key)
 
-    async def publish(self, exchange_name: str, routing_key: str, message: Dict[str, Any], *,
-                      message_id: Optional[str] = None, correlation_id: Optional[str] = None,
-                      reply_to: Optional[str] = None, headers: Optional[Dict[str, Any]] = None,
-                      persistent: bool = True) -> None:
+    async def publish(
+        self,
+        exchange_name: str,
+        routing_key: str,
+        message: Dict[str, Any],
+        *,
+        message_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        reply_to: Optional[str] = None,
+        headers: Optional[Dict[str, Any]] = None,
+        persistent: bool = True,
+    ) -> None:
         ch = await self._ensure()
         ex = await ch.get_exchange(exchange_name, ensure=True)
         body = _dumps(message)
         props = aio_pika.Message(
             body=body,
             content_type="application/json",
-            delivery_mode=aio_pika.DeliveryMode.PERSISTENT if persistent else aio_pika.DeliveryMode.NOT_PERSISTENT,
+            delivery_mode=(
+                aio_pika.DeliveryMode.PERSISTENT
+                if persistent
+                else aio_pika.DeliveryMode.NOT_PERSISTENT
+            ),
             message_id=message_id,
             correlation_id=correlation_id,
             reply_to=reply_to,
@@ -176,7 +219,9 @@ class RabbitMQMessageBus(IMessageBus):
         )
         await ex.publish(props, routing_key=routing_key)
 
-    async def consume(self, queue_name: str, handler: MessageHandler, *, prefetch: int = 1) -> None:
+    async def consume(
+        self, queue_name: str, handler: MessageHandler, *, prefetch: int = 1
+    ) -> None:
         ch = await self._ensure()
         await ch.set_qos(prefetch_count=int(prefetch))
         queue = await ch.get_queue(queue_name, ensure=True)
@@ -184,8 +229,9 @@ class RabbitMQMessageBus(IMessageBus):
         # aio_pika.consume ожидает именно такой тип, как мы определили в MessageHandler.
         await queue.consume(handler, no_ack=False)
 
-    async def publish_rpc_response(self, reply_to: str, response: Dict[str, Any], *,
-                                   correlation_id: Optional[str]) -> None:
+    async def publish_rpc_response(
+        self, reply_to: str, response: Dict[str, Any], *, correlation_id: Optional[str]
+    ) -> None:
         ch = await self._ensure()
         body = _dumps(response)
         msg = aio_pika.Message(
@@ -197,12 +243,12 @@ class RabbitMQMessageBus(IMessageBus):
         await ch.default_exchange.publish(msg, routing_key=reply_to)
 
     async def call_rpc(
-            self,
-            exchange_name: str,
-            routing_key: str,
-            payload: Dict[str, Any],
-            *,
-            correlation_id: Optional[str] = None,
+        self,
+        exchange_name: str,
+        routing_key: str,
+        payload: Dict[str, Any],
+        *,
+        correlation_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         ch = await self._ensure()
         corr_id = correlation_id or str(uuid.uuid4())
@@ -224,7 +270,11 @@ class RabbitMQMessageBus(IMessageBus):
             return await asyncio.wait_for(future, timeout=self.RPC_TIMEOUT_MS / 1000.0)
 
         except aio_pika.exceptions.UnroutableError:
-            logger.error("RPC message is unroutable. Exchange: %s, Routing key: %s", exchange_name, routing_key)
+            logger.error(
+                "RPC message is unroutable. Exchange: %s, Routing key: %s",
+                exchange_name,
+                routing_key,
+            )
             return None
         except asyncio.TimeoutError:
             logger.warning("RPC call timed out for correlation_id: %s", corr_id)

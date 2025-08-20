@@ -4,12 +4,14 @@ import os
 from logging.config import fileConfig
 
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import pool, text # <-- ДОБАВЛЕН ИМПОРТ text
+from sqlalchemy import pool, text  # <-- ДОБАВЛЕН ИМПОРТ text
 from alembic import context
 
 
 # Загружаем URL БД из переменной окружения
-DB_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://game:gamepwd@localhost:5432/game")
+DB_URL = os.getenv(
+    "DATABASE_URL", "postgresql+asyncpg://game:gamepwd@localhost:5432/game"
+)
 
 # --- КОНФИГУРАЦИЯ ---
 # Добавьте сюда новые схемы по мере их появления
@@ -31,12 +33,13 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = None # Автогенерация пока не используется
+target_metadata = None  # Автогенерация пока не используется
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -64,7 +67,7 @@ def run_migrations_offline() -> None:
 # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: делаем функцию синхронной ---
 def do_run_migrations(connection):
     # Получаем имя схемы из аргументов командной строки
-    schema = context.get_x_argument(as_dictionary=True).get('schema')
+    schema = context.get_x_argument(as_dictionary=True).get("schema")
     if not schema or schema not in SCHEMA_VERSION_TABLES:
         raise ValueError(
             f"Необходимо указать схему через -x schema=<schema_name>. "
@@ -80,11 +83,14 @@ def do_run_migrations(connection):
         connection=connection,
         target_metadata=target_metadata,
         version_table=SCHEMA_VERSION_TABLES[schema],
-        include_schemas=True, # Важно для работы со схемами
+        include_schemas=True,  # Важно для работы со схемами
     )
 
     context.run_migrations()
+
+
 # -----------------------------------------------------
+
 
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
@@ -109,13 +115,14 @@ def get_version_table_from_cli() -> str:
     Получает имя таблицы версий из аргументов CLI.
     Используется в offline режиме.
     """
-    schema = context.get_x_argument(as_dictionary=True).get('schema')
+    schema = context.get_x_argument(as_dictionary=True).get("schema")
     if not schema or schema not in SCHEMA_VERSION_TABLES:
-         raise ValueError(
+        raise ValueError(
             f"Необходимо указать схему через -x schema=<schema_name>. "
             f"Доступные схемы: {', '.join(SCHEMA_VERSION_TABLES.keys())}"
         )
     return SCHEMA_VERSION_TABLES[schema]
+
 
 if context.is_offline_mode():
     run_migrations_offline()

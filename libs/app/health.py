@@ -6,27 +6,35 @@ from fastapi import APIRouter, Response, status
 # Модель для health-чека, можно вынести в libs/domain/dto/health.py если нужно
 from pydantic import BaseModel
 
+
 class HealthStatus(BaseModel):
     status: str = "down"
+
 
 class ReadinessStatus(BaseModel):
     ready: bool = False
     dependencies: Dict[str, bool] = {}
 
+
 router = APIRouter(tags=["Health"])
+
 
 @router.get("/health/live", response_model=HealthStatus, summary="Liveness probe")
 async def liveness_check():
     """Проверяет, что процесс приложения запущен и отвечает."""
     return HealthStatus(status="up")
 
+
 def create_readiness_router(
-    readiness_checks: List[Coroutine[Any, Any, tuple[str, bool]]]
+    readiness_checks: List[Coroutine[Any, Any, tuple[str, bool]]],
 ) -> APIRouter:
     """
     Фабрика для создания роутера /health/ready с кастомными проверками.
     """
-    @router.get("/health/ready", response_model=ReadinessStatus, summary="Readiness probe")
+
+    @router.get(
+        "/health/ready", response_model=ReadinessStatus, summary="Readiness probe"
+    )
     async def readiness_check(response: Response):
         """Проверяет готовность сервиса и его зависимостей (БД, брокеры)."""
         all_ready = True

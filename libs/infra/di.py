@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class Container:
     """Простой DI-контейнер без inject; только фактические singletons."""
+
     bus: Optional[RabbitMQMessageBus] = None
     redis: Optional[CentralRedisClient] = None
     session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal
@@ -46,7 +47,6 @@ class Container:
 
         log.info("DI container initialized")
         return self
-
 
     async def shutdown(self) -> None:
         try:

@@ -7,6 +7,7 @@ from libs.utils.logging_setup import app_logger as logger
 
 router = APIRouter(tags=["Health Check"])
 
+
 @router.get("/health", summary="Проверка здоровья сервиса (упрощенная)")
 async def simplified_health_check():
     """
@@ -15,9 +16,7 @@ async def simplified_health_check():
     Используется для отладки, чтобы контейнер мог стать 'healthy'.
     """
     logger.info("Получен запрос на упрощенную проверку здоровья приложения.")
-    return {
-        "status": "healthy_debug_mode",
-        "version": os.getenv("APP_VERSION", "dev")
-    }
+    return {"status": "healthy_debug_mode", "version": os.getenv("APP_VERSION", "dev")}
+
 
 health_router = router

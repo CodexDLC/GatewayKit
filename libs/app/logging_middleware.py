@@ -39,8 +39,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         }
 
         logger.info(
-            f'HTTP {request.method} {request.url.path} - {response.status_code}',
-            extra=log_extra
+            f"HTTP {request.method} {request.url.path} - {response.status_code}",
+            extra=log_extra,
         )
 
         # 6. Добавляем Request ID в заголовок ответа, чтобы клиент тоже его видел

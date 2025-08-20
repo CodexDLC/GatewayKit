@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, ConfigDict, EmailStr, constr
 
+
 # ----- ISSUE TOKEN -----
 class IssueTokenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -16,6 +17,7 @@ class IssueTokenRequest(BaseModel):
     scopes: List[str] = Field(default_factory=list)
     expires_in: Optional[int] = Field(default=None, ge=60)
 
+
 class IssueTokenResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
@@ -23,12 +25,14 @@ class IssueTokenResponse(BaseModel):
     expires_in: int
     account_id: int
 
+
 # ----- VALIDATE TOKEN -----
 class ValidateTokenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     access_token: str
     expected_aud: Optional[str] = None
     expected_iss: Optional[str] = None
+
 
 class ValidateTokenResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -42,12 +46,14 @@ class ValidateTokenResponse(BaseModel):
     error_code: Optional[str] = None
     error_message: Optional[str] = None
 
+
 # ----- REGISTER -----
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: EmailStr
     username: constr(strip_whitespace=True, min_length=3, max_length=32)
     password: constr(min_length=8)
+
 
 class RegisterResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -58,10 +64,12 @@ class RegisterResponse(BaseModel):
     error_code: Optional[str] = None
     error_message: Optional[str] = None
 
+
 # ----- REFRESH TOKEN -----
 class RefreshTokenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     refresh_token: str
+
 
 class RefreshTokenResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -71,10 +79,12 @@ class RefreshTokenResponse(BaseModel):
     expires_in: int
     account_id: int
 
+
 # ----- LOGOUT -----
 class LogoutRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     refresh_token: str
+
 
 class LogoutResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
