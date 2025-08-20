@@ -4,7 +4,7 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 from typing import Any
-from logging import Logger # ИЗМЕНЕНИЕ: Добавляем импорт Logger
+from logging import Logger  # ИЗМЕНЕНИЕ: Добавляем импорт Logger
 
 # --- НОВЫЕ ИМПОРТЫ ---
 from .json_logging import JsonFormatter, SecretMaskingFilter
@@ -79,7 +79,9 @@ def get_json_console_handler(level: int, service_name: str):
     return handler
 
 
-def get_json_file_handler(path: str, level: int, max_size: int, backups: int, service_name: str):
+def get_json_file_handler(
+    path: str, level: int, max_size: int, backups: int, service_name: str
+):
     """Возвращает файловый обработчик с JSON-форматом и ротацией."""
     log_dir = os.path.dirname(path)
     try:

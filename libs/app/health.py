@@ -26,7 +26,9 @@ async def liveness_check():
 def create_readiness_router(
     readiness_checks: List[Callable[[], Awaitable[Optional[Tuple[str, bool]]]]],
 ) -> APIRouter:
-    @router.get("/health/ready", response_model=ReadinessStatus, summary="Readiness probe")
+    @router.get(
+        "/health/ready", response_model=ReadinessStatus, summary="Readiness probe"
+    )
     async def readiness_check(response: Response):
         all_ready = True
         dep_statuses: Dict[str, bool] = {}
