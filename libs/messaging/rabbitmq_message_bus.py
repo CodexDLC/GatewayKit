@@ -6,7 +6,7 @@ import json
 import os
 import time
 import uuid
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 # Переносим все импорты наверх
@@ -15,7 +15,7 @@ from aio_pika.abc import (
     AbstractIncomingMessage,
     AbstractRobustChannel,
     AbstractRobustConnection,
-    AbstractChannel
+
 )
 from aio_pika.exceptions import UnroutableError, ConnectionClosed, ChannelClosed
 
