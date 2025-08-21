@@ -25,8 +25,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY pyproject.toml .
 COPY libs ./libs
 COPY apps ./apps
-# --- НАЧАЛО ИЗМЕНЕНИЙ ---
 COPY tests ./tests
+
+RUN rm -f pytest.ini
 
 RUN pip install .
 

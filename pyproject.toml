@@ -10,3 +10,6 @@ description = "Shared libraries for the game server backend."
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["libs*"]
+
+[tool.pytest.ini_options]
+anyio_backend = "asyncio"

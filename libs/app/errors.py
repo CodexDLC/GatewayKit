@@ -46,8 +46,16 @@ ERROR_CODE_TO_HTTP_STATUS = {
 
 
 def get_http_status(error_code: str) -> int:
-    """Возвращает HTTP статус для кода ошибки, по умолчанию 500."""
-    return ERROR_CODE_TO_HTTP_STATUS.get(
-        ErrorCode(error_code),
-        status.HTTP_500_INTERNAL_SERVER_ERROR,  # ИЗМЕНЕНИЕ
-    )
+    """
+    Возвращает HTTP статус для кода ошибки.
+    Если код неизвестен, возвращает 500 по умолчанию.
+    """
+    try:
+        # Пытаемся найти код в нашем перечислении
+        code = ErrorCode(error_code)
+        return ERROR_CODE_TO_HTTP_STATUS.get(
+            code, status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    except ValueError:
+        # Если такого кода нет в ErrorCode, спокойно возвращаем 500
+        return status.HTTP_500_INTERNAL_SERVER_ERROR
