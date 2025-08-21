@@ -60,12 +60,9 @@ class RegisterRequest(BaseModel):
 
 class RegisterResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    success: bool = False
-    account_id: Optional[int] = None
-    email: Optional[EmailStr] = None
-    username: Optional[str] = None
-    error_code: Optional[str] = None
-    error_message: Optional[str] = None
+    account_id: int
+    email: str  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ: EmailStr заменен на str
+    username: str
 
 
 # ----- REFRESH TOKEN -----

@@ -1,4 +1,3 @@
-# apps/auth_svc/handlers/auth_register_rpc_handler.py
 from __future__ import annotations
 from libs.domain.dto.auth import RegisterRequest, RegisterResponse
 from libs.domain.dto.rpc import RpcResponse
@@ -18,13 +17,12 @@ class AuthRegisterRpcHandler:
                 success=False, error_code=error, message="Registration failed."
             )
 
-        # ДОБАВЛЕНО: Проверка на None
         if account:
             return RpcResponse(
                 success=True,
                 data=RegisterResponse(
                     account_id=account.id,
-                    email=account.email,
+                    email=account.email, # <--- ИЗМЕНЕНИЕ ЗДЕСЬ: убрано преобразование в EmailStr
                     username=account.username,
                 ),
             )

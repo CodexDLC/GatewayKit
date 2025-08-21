@@ -5,6 +5,8 @@ import asyncio
 import os
 from dataclasses import dataclass
 
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
 from libs.messaging.i_message_bus import IMessageBus
 from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
 from libs.infra.central_redis_client import CentralRedisClient
@@ -26,10 +28,10 @@ from apps.auth_svc.handlers.auth_logout_rpc_handler import AuthLogoutRpcHandler
 class AuthContainer:
     """DI-контейнер для AuthService."""
 
-    # ... (содержимое dataclass без изменений) ...
     bus: IMessageBus
     redis: CentralRedisClient
     auth_service: AuthService
+    session_factory: async_sessionmaker[AsyncSession]
     issue_token_handler: AuthIssueTokenRpcHandler
     validate_token_handler: AuthValidateTokenRpcHandler
     register_handler: AuthRegisterRpcHandler
@@ -39,7 +41,7 @@ class AuthContainer:
     @classmethod
     async def create(cls) -> "AuthContainer":
         """Фабричный метод для асинхронной инициализации контейнера."""
-        # --- ВОТ ВАЖНОЕ ИЗМЕНЕНИЕ ---
+
         from libs.infra.db import SessionFactory
 
         # --- 1. Загрузка зависимостей из ENV ---
@@ -55,7 +57,6 @@ class AuthContainer:
         if not redis_url:
             raise ValueError("REDIS_URL environment variable not set.")
 
-        # ... (остальной код метода create без изменений) ...
         bus = RabbitMQMessageBus(amqp_url)
         redis_client = CentralRedisClient(redis_url=redis_url, password=redis_pwd)
 
@@ -81,6 +82,7 @@ class AuthContainer:
             bus=bus,
             redis=redis_client,
             auth_service=auth_service,
+            session_factory=SessionFactory,
             issue_token_handler=issue_handler,
             validate_token_handler=validate_handler,
             register_handler=register_handler,
@@ -89,7 +91,7 @@ class AuthContainer:
         )
 
     async def shutdown(self):
-        # ... (метод shutdown без изменений) ...
+
         shutdown_tasks = []
         if self.bus:
             shutdown_tasks.append(self.bus.close())

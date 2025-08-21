@@ -35,7 +35,7 @@ class ApiRegisterRequest(BaseModel):
 
 class ApiRegisterResponse(BaseModel):
     account_id: int
-    email: EmailStr
+    email: str  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ: EmailStr заменен на str
     username: str
 
 
