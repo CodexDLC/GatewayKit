@@ -20,8 +20,10 @@ if config.config_file_name:
     fileConfig(config.config_file_name)
 
 # 3. Импорт моделей для поддержки Autogenerate
-from libs.domain.orm.base import Base
+from libs.domain.orm.base import Base  # noqa: E402
+
 target_metadata = Base.metadata
+
 
 # 4. Основная конфигурация
 def get_db_url() -> str:
@@ -33,6 +35,7 @@ def get_db_url() -> str:
     if "+asyncpg" in db_url:
         return db_url.replace("+asyncpg", "+psycopg2")
     return db_url
+
 
 def run_migrations_online() -> None:
     """Запуск миграций в 'онлайн' режиме."""
@@ -47,7 +50,7 @@ def run_migrations_online() -> None:
         conn_autocommit = connection.execution_options(isolation_level="AUTOCOMMIT")
         with conn_autocommit.begin():
             conn_autocommit.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
-            conn_autocommit.execute(text('CREATE EXTENSION IF NOT EXISTS citext'))
+            conn_autocommit.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
 
         context.configure(
             connection=connection,
@@ -60,6 +63,7 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.execute(text(f'SET search_path TO "{schema}", public'))
             context.run_migrations()
+
 
 if context.is_offline_mode():
     raise NotImplementedError("Offline mode is not supported in this script.")

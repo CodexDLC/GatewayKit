@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from libs.infra.db import AsyncSessionLocal
+from libs.infra.db import SessionFactory
 
 from libs.utils.logging_setup import app_logger as logger
 
@@ -18,7 +18,7 @@ async def get_worker_db_session() -> AsyncGenerator[
     с управлением транзакцией (commit/rollback) и автоматическим закрытием.
     Сессия получается из AsyncSessionLocal.
     """
-    session: AsyncSession = AsyncSessionLocal()
+    session: AsyncSession = SessionFactory()
     logger.debug("Открытие сессии БД для задачи ARQ воркера.")
     try:
         yield session
@@ -43,4 +43,4 @@ async def get_raw_worker_session() -> AsyncSession:
     Вызывающий код полностью отвечает за commit, rollback и close.
     """
     logger.debug("Получение 'сырого' объекта сессии ORM для задачи ARQ воркера.")
-    return AsyncSessionLocal()
+    return SessionFactory()

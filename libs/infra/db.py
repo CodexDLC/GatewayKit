@@ -33,10 +33,11 @@ engine: AsyncEngine = create_async_engine(
     DATABASE_URL,
     echo=DB_ECHO,
     future=True,
-    poolclass=NullPool,        # при необходимости поменяйте на пул
+    poolclass=NullPool,  # при необходимости поменяйте на пул
     pool_pre_ping=True,
     connect_args=connect_args,
 )
+
 
 # Страховка для драйверов без server_settings (или если его отключили)
 @event.listens_for(engine.sync_engine, "connect")
@@ -48,12 +49,14 @@ def _set_search_path(dbapi_conn, _):  # type: ignore[no-untyped-def]
     except Exception:  # не мешаем подключению, просто логируем
         log.debug("Could not set search_path on connect", exc_info=True)
 
+
 # --- SESSION FACTORY ---
 SessionFactory = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
 
 # --- PUBLIC API ---
 @asynccontextmanager
@@ -64,6 +67,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     finally:
         await session.close()
 
+
 async def check_db_connection() -> bool:
     try:
         async with engine.begin() as conn:
@@ -72,6 +76,7 @@ async def check_db_connection() -> bool:
     except Exception:
         log.exception("DB readiness check failed")
         return False
+
 
 __all__ = [
     "engine",

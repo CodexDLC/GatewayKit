@@ -6,6 +6,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
+
 def upgrade_to_head() -> None:
     root = Path(__file__).resolve().parents[2]  # корень проекта (/app)
     cfg = Config(str(root / "alembic.ini"))

@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .central_redis_client import CentralRedisClient
-from .db import engine, AsyncSessionLocal
+from .db import engine, SessionFactory
 from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
 
 
@@ -23,7 +23,7 @@ class Container:
 
     bus: Optional[RabbitMQMessageBus] = None
     redis: Optional[CentralRedisClient] = None
-    session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal
+    session_factory: async_sessionmaker[AsyncSession] = SessionFactory
 
     async def init(self) -> "Container":
         # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---

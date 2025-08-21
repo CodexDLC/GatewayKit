@@ -5,16 +5,16 @@ Revises:
 Create Date: 2025-08-21 10:30:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '0001'
+revision: str = "0001"
 down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = ('auth',)
+branch_labels: Union[str, Sequence[str], None] = ("auth",)
 depends_on: Union[str, Sequence[str], None] = None
 
 
@@ -30,4 +30,3 @@ def downgrade() -> None:
     op.execute("DROP EXTENSION IF EXISTS citext")
     op.execute("DROP SCHEMA IF EXISTS auth CASCADE")
     # ### end Alembic commands ###
-

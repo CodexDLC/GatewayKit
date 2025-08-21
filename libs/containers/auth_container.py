@@ -25,6 +25,7 @@ from apps.auth_svc.handlers.auth_logout_rpc_handler import AuthLogoutRpcHandler
 @dataclass
 class AuthContainer:
     """DI-контейнер для AuthService."""
+
     # ... (содержимое dataclass без изменений) ...
     bus: IMessageBus
     redis: CentralRedisClient
@@ -64,7 +65,7 @@ class AuthContainer:
         jwt_manager = JwtManager(secret=jwt_secret)
 
         auth_service = AuthService(
-            session_factory=SessionFactory, # Убедитесь, что используется эта переменная
+            session_factory=SessionFactory,  # Убедитесь, что используется эта переменная
             jwt_manager=jwt_manager,
             password_manager=password_manager,
             redis=redis_client,
