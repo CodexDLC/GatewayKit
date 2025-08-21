@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Dict, Any
 
-from sqlalchemy import BigInteger, String, Boolean, Enum, func
+from sqlalchemy import BigInteger, String, Boolean, Enum, func, DateTime
 from sqlalchemy.dialects.postgresql import JSONB, CITEXT
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,9 +45,12 @@ class Account(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),

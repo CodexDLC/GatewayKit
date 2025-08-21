@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey
+from sqlalchemy import BigInteger, ForeignKey, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 
 from libs.domain.orm.base import Base
 
@@ -20,16 +21,21 @@ class Credentials(Base):
         BigInteger, ForeignKey("auth.accounts.id", ondelete="CASCADE"), primary_key=True
     )
 
-    password_hash: Mapped[str]
+    password_hash: Mapped[str] = mapped_column(Text)  # <--- ИЗМЕНЕНИЕ 1: Добавьте Text
     password_updated_at: Mapped[datetime] = mapped_column(
-        nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
-    twofa_secret: Mapped[str | None]
-    last_login_at: Mapped[datetime | None]
+    twofa_secret: Mapped[str | None] = mapped_column(
+        Text
+    )  # <--- ИЗМЕНЕНИЕ 2: Добавьте Text
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     failed_attempts: Mapped[int] = mapped_column(nullable=False, default=0)
-    locked_until: Mapped[datetime | None]
+
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Связи
     account: Mapped["Account"] = relationship(

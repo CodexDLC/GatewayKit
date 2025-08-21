@@ -91,7 +91,6 @@ class AuthContainer:
         )
 
     async def shutdown(self):
-
         shutdown_tasks = []
         if self.bus:
             shutdown_tasks.append(self.bus.close())

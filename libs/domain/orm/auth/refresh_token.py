@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey
+from sqlalchemy import BigInteger, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,10 +32,16 @@ class RefreshToken(Base):
     ip: Mapped[str | None] = mapped_column(INET)
 
     created_at: Mapped[datetime] = mapped_column(
-        nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
-    expires_at: Mapped[datetime] = mapped_column(nullable=False)
-    revoked_at: Mapped[datetime | None]
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )  # <--- ИЗМЕНЕНИЕ
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )  # <--- ИЗМЕНЕНИЕ
 
     # Связи
     account: Mapped["Account"] = relationship(back_populates="refresh_tokens")

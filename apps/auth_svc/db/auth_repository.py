@@ -53,17 +53,15 @@ class AuthRepository:
         # Создаем основную запись аккаунта
         new_account = Account(
             username=dto.username,
-            email=dto.email.lower(),  # Храним email в нижнем регистре
+            email=dto.email.lower(),
         )
 
-        # Создаем запись с паролем
-        self.session.add(Credentials(password_hash=password_hash, account=new_account))
+        # Создаем запись с паролем и СРАЗУ связываем ее с аккаунтом
+        new_account.credentials = Credentials(password_hash=password_hash)
 
+        # Добавляем в сессию только "главный" объект.
+        # SQLAlchemy сам позаботится о связанном объекте credentials.
         self.session.add(new_account)
-        # credentials добавится автоматически через relationship
-
-        # SQLAlchemy сама обработает вставку в обе таблицы в правильном порядке.
-        # Commit будет выполнен декоратором @transactional в сервисном слое.
 
         return new_account
 

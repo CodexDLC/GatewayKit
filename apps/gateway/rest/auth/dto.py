@@ -1,6 +1,6 @@
 # apps/gateway/rest/auth/dto.py
 from typing import TypeVar, Generic, Optional, List, Annotated
-from pydantic import BaseModel, Field, EmailStr, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints
 
 PayloadT = TypeVar("PayloadT")
 
@@ -26,29 +26,23 @@ class ApiLoginResponse(BaseModel):
 
 
 class ApiRegisterRequest(BaseModel):
-    email: EmailStr
-    username: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=3, max_length=32)
-    ]
-    password: Annotated[str, StringConstraints(min_length=8)]
+    email: str
+    username: str
+    password: str
 
 
 class ApiRegisterResponse(BaseModel):
     account_id: int
-    email: str  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ: EmailStr заменен на str
+    email: str
     username: str
-
-
-class ApiValidatedTokenData(BaseModel):
-    account_id: int
-    client_id: Optional[str] = None
-    scopes: List[str] = Field(default_factory=list)
-    exp: int
 
 
 class ApiValidateResponse(BaseModel):
     valid: bool
-    token_data: Optional[ApiValidatedTokenData] = None
+    account_id: Optional[int] = None
+    client_id: Optional[str] = None
+    scopes: List[str] = Field(default_factory=list)
+    exp: Optional[int] = None
 
 
 class ApiRefreshTokenRequest(BaseModel):

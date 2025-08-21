@@ -1,7 +1,7 @@
 # libs/domain/dto/auth.py
 from __future__ import annotations
-from typing import Optional, List, Literal, Annotated
-from pydantic import BaseModel, Field, ConfigDict, EmailStr, StringConstraints
+from typing import Optional, List, Literal
+from pydantic import BaseModel, Field, ConfigDict
 
 
 # ----- ISSUE TOKEN -----
@@ -51,17 +51,15 @@ class ValidateTokenResponse(BaseModel):
 # ----- REGISTER -----
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    email: EmailStr
-    username: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=3, max_length=32)
-    ]
-    password: Annotated[str, StringConstraints(min_length=8)]
+    email: str
+    username: str
+    password: str
 
 
 class RegisterResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     account_id: int
-    email: str  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ: EmailStr заменен на str
+    email: str
     username: str
 
 

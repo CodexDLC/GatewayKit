@@ -8,25 +8,29 @@ from libs.domain.dto.auth import ValidateTokenRequest, ValidateTokenResponse
 
 class AuthValidateTokenRpcHandler(IAuthHandler):
     """
-    Реализует валидацию JWT:
-    - проверка подписи (secret + alg)
-    - проверка exp (истечения)
-    - при наличии expected_iss/aud — также их сверка
+    Реализует валидацию JWT...
     """
 
-    def __init__(self, *, jwt_secret: str, jwt_alg: str = "HS256") -> None:
+    # --- ИЗМЕНЕНИЕ 1: Добавляем jwt_aud в конструктор ---
+    def __init__(
+        self, *, jwt_secret: str, jwt_alg: str = "HS256", jwt_aud: str = "game_clients"
+    ) -> None:
         self._secret = jwt_secret
         self._alg = jwt_alg
+        self._aud = jwt_aud  # Сохраняем аудиторию
 
     async def process(self, dto: ValidateTokenRequest) -> ValidateTokenResponse:
         try:
+            # --- ИЗМЕНЕНИЕ 2: Используем нашу аудиторию по умолчанию ---
+            audience_to_check = dto.expected_aud or self._aud
+
             decoded = jwt.decode(
                 dto.access_token,
                 self._secret,
                 algorithms=[self._alg],
-                options={"require": ["exp", "iat"]},  # требуем exp/iat
-                audience=dto.expected_aud,  # если None — аудитория не проверяется
-                issuer=dto.expected_iss,  # если None — iss не проверяется
+                options={"require": ["exp", "iat"]},
+                audience=audience_to_check,  # <--- ПЕРЕДАЁМ АУДИТОРИЮ
+                issuer=dto.expected_iss,
             )
             sub = decoded.get("sub")
             user_id = str(sub) if sub is not None else None

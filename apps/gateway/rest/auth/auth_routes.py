@@ -1,4 +1,5 @@
 # apps/gateway/rest/auth/auth_routes.py
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 
 from libs.messaging.i_message_bus import IMessageBus
@@ -56,9 +57,10 @@ async def login(
 @router.post("/register", response_model=APIResponse[ApiRegisterResponse])
 async def register(
     request: Request,
-    body: ApiRegisterRequest,  # <-- ИСПОЛЬЗУЕМ НОВОЕ ИМЯ
+    body: ApiRegisterRequest,
     message_bus: IMessageBus = Depends(get_message_bus),
 ):
+    print(">>>> REGISTER ENDPOINT WAS CALLED <<<<")  # <--- ДОБАВЬТЕ ЭТУ СТРОКУ
     correlation_id = request.headers.get("x-request-id")
     rpc_resp = await message_bus.call_rpc(
         exchange_name=Exchanges.RPC,
@@ -115,7 +117,7 @@ async def validate_token(
             ),
         )
 
-    # ИЗМЕНЕНИЕ: Преобразование dict в DTO
+    # Эта строка теперь будет работать корректно
     return APIResponse[ApiValidateResponse](
         success=True, data=ApiValidateResponse(**rpc_resp)
     )

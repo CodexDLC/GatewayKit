@@ -22,7 +22,7 @@ class AuthRegisterRpcHandler:
                 success=True,
                 data=RegisterResponse(
                     account_id=account.id,
-                    email=account.email, # <--- ИЗМЕНЕНИЕ ЗДЕСЬ: убрано преобразование в EmailStr
+                    email=account.email,  # <--- ИЗМЕНЕНИЕ ЗДЕСЬ: убрано преобразование в EmailStr
                     username=account.username,
                 ),
             )
