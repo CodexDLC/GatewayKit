@@ -24,6 +24,7 @@ SQLAlchemy
 asyncpg
 redis
 alembic
+psycopg2-binary
 bcrypt
 
 

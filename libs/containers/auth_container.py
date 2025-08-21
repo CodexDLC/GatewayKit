@@ -1,4 +1,5 @@
 # libs/containers/auth_container.py
+
 from __future__ import annotations
 import asyncio
 import os
@@ -6,9 +7,7 @@ from dataclasses import dataclass
 
 from libs.messaging.i_message_bus import IMessageBus
 from libs.messaging.rabbitmq_message_bus import RabbitMQMessageBus
-from libs.infra.db import AsyncSessionLocal
 from libs.infra.central_redis_client import CentralRedisClient
-
 from apps.auth_svc.services.auth_service import AuthService
 from apps.auth_svc.utils.jwt_manager import JwtManager
 from apps.auth_svc.utils.password_manager import PasswordManager
@@ -26,12 +25,10 @@ from apps.auth_svc.handlers.auth_logout_rpc_handler import AuthLogoutRpcHandler
 @dataclass
 class AuthContainer:
     """DI-контейнер для AuthService."""
-
+    # ... (содержимое dataclass без изменений) ...
     bus: IMessageBus
     redis: CentralRedisClient
     auth_service: AuthService
-
-    # Обработчики
     issue_token_handler: AuthIssueTokenRpcHandler
     validate_token_handler: AuthValidateTokenRpcHandler
     register_handler: AuthRegisterRpcHandler
@@ -41,6 +38,9 @@ class AuthContainer:
     @classmethod
     async def create(cls) -> "AuthContainer":
         """Фабричный метод для асинхронной инициализации контейнера."""
+        # --- ВОТ ВАЖНОЕ ИЗМЕНЕНИЕ ---
+        from libs.infra.db import SessionFactory
+
         # --- 1. Загрузка зависимостей из ENV ---
         amqp_url = os.getenv("RABBITMQ_DSN")
         jwt_secret = os.getenv("JWT_SECRET")
@@ -54,25 +54,22 @@ class AuthContainer:
         if not redis_url:
             raise ValueError("REDIS_URL environment variable not set.")
 
-        # --- 2. Создание экземпляров клиентов ---
+        # ... (остальной код метода create без изменений) ...
         bus = RabbitMQMessageBus(amqp_url)
         redis_client = CentralRedisClient(redis_url=redis_url, password=redis_pwd)
 
-        # Параллельно подключаемся ко внешним системам
         await asyncio.gather(bus.connect(), redis_client.connect())
 
-        # --- 3. Создание утилит и сервисов ---
         password_manager = PasswordManager()
         jwt_manager = JwtManager(secret=jwt_secret)
 
         auth_service = AuthService(
-            session_factory=AsyncSessionLocal,
+            session_factory=SessionFactory, # Убедитесь, что используется эта переменная
             jwt_manager=jwt_manager,
             password_manager=password_manager,
             redis=redis_client,
         )
 
-        # --- 4. Создание RPC-хендлеров ---
         issue_handler = AuthIssueTokenRpcHandler(auth_service=auth_service)
         validate_handler = AuthValidateTokenRpcHandler(jwt_secret=jwt_secret)
         register_handler = AuthRegisterRpcHandler(auth_service=auth_service)
@@ -91,7 +88,7 @@ class AuthContainer:
         )
 
     async def shutdown(self):
-        """Корректно освобождает ресурсы."""
+        # ... (метод shutdown без изменений) ...
         shutdown_tasks = []
         if self.bus:
             shutdown_tasks.append(self.bus.close())
