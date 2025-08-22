@@ -74,15 +74,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL}
       RABBITMQ_DSN: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/core"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0"
-    # --- ИЗМЕНЕНИЕ 1: Новая команда запуска с логированием в stdout ---
+    # --- ИЗМЕНЕНИЕ 1: Убираем переносы строк ---
     command: >
-      gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000
-      --access-logfile - --error-logfile -
-      apps.gateway.gateway_main:app
+      gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 --access-logfile - --error-logfile - apps.gateway.gateway_main:app
     ports: ["8000:8000"]
-    # --- ИЗМЕНЕНИЕ 2: Убираем volume для логов ---
-    # volumes:
-    #   - "./logs/gateway:/app/logs"
     depends_on:
       rabbitmq: { condition: service_healthy }
     healthcheck:
@@ -108,16 +103,10 @@ services:
       DB_SCHEMA: "auth"
       JWT_SECRET: ${JWT_SECRET}
       ENV_TYPE: "pytest"
-    # --- ИЗМЕНЕНИЕ 3: Новая команда с миграцией и логированием в stdout ---
+    # --- ИЗМЕНЕНИЕ 2: Убираем переносы строк ---
     command: >
-      sh -c "alembic -x schema=auth upgrade head &&
-             gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001
-             --access-logfile - --error-logfile -
-             apps.auth_svc.auth_svc_main:app"
+      sh -c "alembic -x schema=auth upgrade head && gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001 --access-logfile - --error-logfile - apps.auth_svc.auth_svc_main:app"
     ports: ["8001:8001"]
-    # --- ИЗМЕНЕНИЕ 4: Убираем volume для логов ---
-    # volumes:
-    #   - "./logs/auth:/app/logs"
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
