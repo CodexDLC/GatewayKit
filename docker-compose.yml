@@ -82,10 +82,10 @@ services:
       rabbitmq: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8000/health/ready || exit 1"]
-      interval: 15s
+      interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 12
+      start_period: 20s # Даем 20 секунд перед первой проверкой
     restart: always
 
   auth_svc:
@@ -115,8 +115,8 @@ services:
       rabbitmq: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8001/health/ready || exit 1"]
-      interval: 15s
+      interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 12       # Увеличиваем число попыток
+      start_period: 20s # Даем 20с на миграции и запуск перед первой проверкой
     restart: always
