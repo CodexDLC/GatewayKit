@@ -27,7 +27,6 @@ COPY libs ./libs
 COPY apps ./apps
 COPY tests ./tests
 
-RUN rm -f pytest.ini
 
 RUN pip install .
 

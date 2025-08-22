@@ -30,6 +30,6 @@ bcrypt
 pytest
 httpx
 pytest-dependency
-
+trio
 
 jsonschema
