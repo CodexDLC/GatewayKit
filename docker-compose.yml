@@ -69,16 +69,17 @@ services:
       dockerfile: apps/gateway/Dockerfile
     container_name: gateway_service
     networks: [backend_network]
+    # --- ИЗМЕНЕНИЕ 1: Запускаем контейнер от имени root ---
+    user: root
     environment:
       CONTAINER_ID: "gateway"
       LOG_LEVEL: ${LOG_LEVEL}
       RABBITMQ_DSN: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/core"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0"
-    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    # --- ИЗМЕНЕНИЕ 2: Сначала chown от root, потом gunicorn с понижением прав ---
     command: >
-      sh -c "chown -R 1001:1001 /app/logs &&
-             gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 apps.gateway.gateway_main:app"
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+      sh -c "chown -R 1001:1001 /app &&
+             gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 --user 1001 --group 1001 apps.gateway.gateway_main:app"
     ports: ["8000:8000"]
     volumes:
       - "./logs/gateway:/app/logs"
@@ -98,6 +99,8 @@ services:
       dockerfile: apps/auth_svc/Dockerfile
     container_name: auth_service
     networks: [backend_network]
+    # --- ИЗМЕНЕНИЕ 3: Запускаем контейнер от имени root ---
+    user: root
     environment:
       CONTAINER_ID: "auth_svc"
       LOG_LEVEL: ${LOG_LEVEL}
@@ -107,12 +110,11 @@ services:
       DB_SCHEMA: "auth"
       JWT_SECRET: ${JWT_SECRET}
       ENV_TYPE: "pytest"
-    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    # --- ИЗМЕНЕНИЕ 4: chown от root, alembic, потом gunicorn с понижением прав ---
     command: >
-      sh -c "chown -R 1001:1001 /app/logs &&
+      sh -c "chown -R 1001:1001 /app &&
              alembic -x schema=auth upgrade head &&
-             gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001 apps.auth_svc.auth_svc_main:app"
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+             gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001 --user 1001 --group 1001 apps.auth_svc.auth_svc_main:app"
     ports: ["8001:8001"]
     volumes:
       - "./logs/auth:/app/logs"
