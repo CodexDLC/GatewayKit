@@ -36,8 +36,7 @@ ENV ALEMBIC_CONFIG=/app/alembic.ini
 
 RUN pip install .
 
-# логи
-RUN mkdir -p /app/logs && chown -R 1001:1001 /app
+
 EXPOSE 8001
 USER 1001
 
