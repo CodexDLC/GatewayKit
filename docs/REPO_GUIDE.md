@@ -101,4 +101,4 @@ docker compose exec gateway pytest
 
 Bash
 
-docker compose down -v
+docker compose down -v # dfas
