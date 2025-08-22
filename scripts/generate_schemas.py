@@ -1,16 +1,22 @@
 # scripts/generate_schemas.py
 import json
+import sys
 from pathlib import Path
 
+# Добавляем корень проекта в путь поиска модулей
+# Это позволяет скрипту находить папки 'apps' и 'libs'
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT_DIR))
+
 # Импортируем все модели, для которых нужны схемы
-from apps.gateway.rest.auth.dto import (
+from apps.gateway.rest.auth.dto import (  # noqa: E402
     ApiLoginResponse,
     ApiRegisterResponse,
     ApiValidateResponse,
 )
 
-# Определяем, где лежат модели и куда сохранять схемы
-SCHEMAS_DIR = Path(__file__).parent.parent / "libs/domain/schemas/v1"
+# Определяем, куда сохранять схемы
+SCHEMAS_DIR = ROOT_DIR / "libs/domain/schemas/v1"
 MODELS_TO_GENERATE = {
     "auth_login_response.v1.json": ApiLoginResponse,
     "auth_register_response.v1.json": ApiRegisterResponse,
