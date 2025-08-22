@@ -102,6 +102,10 @@ services:
       REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0"
       DB_SCHEMA: "auth"
       JWT_SECRET: ${JWT_SECRET}
+      ENV_TYPE: "pytest"
+    command: >
+      sh -c "alembic -x schema=auth upgrade head &&
+             gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001 apps.auth_svc.auth_svc_main:app"
     ports: ["8001:8001"]
     volumes:
       - "./logs/auth:/app/logs"

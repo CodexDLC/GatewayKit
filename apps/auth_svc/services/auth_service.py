@@ -88,6 +88,21 @@ class AuthService:
         if not dto.username or not dto.password:
             return None, ErrorCode.AUTH_INVALID_CREDENTIALS
 
+        # ====================================================================
+        # ==== НАЧАЛО ИЗМЕНЕНИЙ: БЛОК ДЛЯ ИМИТАЦИИ СБОЯ В ТЕСТАХ ==========
+        # ====================================================================
+        # Этот блок кода предназначен ИСКЛЮЧИТЕЛЬНО для интеграционного теста
+        # на retry-механизм. В проде он никогда не будет активен.
+        if "pytest" in os.environ.get("ENV_TYPE", ""):
+            fail_flag_key = f"test:fail_once:auth.issue_token:{dto.username}"
+            if self.redis and await self.redis.exists(fail_flag_key):
+                log.warning(f"ТЕСТ: Имитируем временный сбой для {dto.username}")
+                await self.redis.delete(fail_flag_key) # Удаляем ключ, чтобы при retry все прошло успешно
+                raise ConnectionError("ТЕСТ: Имитация временного сбоя подключения к БД")
+        # ====================================================================
+        # ==== КОНЕЦ ИЗМЕНЕНИЙ ===============================================
+        # ====================================================================
+
         # --- Шаг 1: Проверяем, не забанен ли пользователь ---
         ban_key = key_auth_ban(dto.username)
         assert self.redis, "Redis client is not connected"  # Для mypy

@@ -80,3 +80,12 @@ class TestAuthFlow:
         data = response.json()
         assert data["data"]["valid"] is True
         assert data["data"]["account_id"] == TestAuthFlow.account_id
+
+
+    @pytest.mark.dependency(depends=["TestAuthFlow::test_register_new_user"])
+    def test_validate_invalid_token_fails(self, gateway_api_url: str):
+        """Тест валидации неверного/испорченного токена."""
+        headers = {"Authorization": "Bearer obviously-invalid-token"}
+        response = httpx.get(f"{gateway_api_url}/auth/validate", headers=headers)
+
+        assert response.status_code == 401

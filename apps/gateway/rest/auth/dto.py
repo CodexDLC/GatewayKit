@@ -1,6 +1,6 @@
 # apps/gateway/rest/auth/dto.py
 from typing import TypeVar, Generic, Optional, List, Annotated
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, EmailStr
 
 PayloadT = TypeVar("PayloadT")
 
@@ -26,7 +26,8 @@ class ApiLoginResponse(BaseModel):
 
 
 class ApiRegisterRequest(BaseModel):
-    email: str
+
+    email: EmailStr
     username: str
     password: str
 
