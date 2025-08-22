@@ -36,13 +36,17 @@ class LoggerConfig:
     def _disable_sqlalchemy_logs(self):
         # ... (этот метод без изменений)
         sql_loggers = [
-            "sqlalchemy", "sqlalchemy.engine", "sqlalchemy.pool",
-            "sqlalchemy.orm", "asyncpg",
+            "sqlalchemy",
+            "sqlalchemy.engine",
+            "sqlalchemy.pool",
+            "sqlalchemy.orm",
+            "asyncpg",
         ]
         for name in sql_loggers:
             logging.getLogger(name).setLevel(
                 logging.WARNING if not self.sql_echo else logging.INFO
             )
+
 
 # --- Фабрика хендлера для консоли ---
 def get_json_console_handler(level: int, service_name: str) -> logging.Handler:
@@ -73,9 +77,13 @@ uvicorn_error_logger = logging.getLogger("uvicorn.error")
 uvicorn_access_logger = logging.getLogger("uvicorn.access")
 
 for ext_logger in (
-    gunicorn_error_logger, gunicorn_access_logger,
-    uvicorn_error_logger, uvicorn_access_logger,
+    gunicorn_error_logger,
+    gunicorn_access_logger,
+    uvicorn_error_logger,
+    uvicorn_access_logger,
 ):
     # --- ИЗМЕНЕНИЕ: Направляем логи gunicorn/uvicorn в stdout ---
-    ext_logger.handlers = [get_json_console_handler(config.console_log_level, "gunicorn")]
+    ext_logger.handlers = [
+        get_json_console_handler(config.console_log_level, "gunicorn")
+    ]
     ext_logger.propagate = False
