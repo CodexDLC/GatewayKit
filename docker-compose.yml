@@ -1,4 +1,4 @@
-# infra/docker-compose.yml
+# docker-compose.yml
 
 volumes:
   pg_data:
@@ -47,12 +47,11 @@ services:
     container_name: rabbitmq_service
     networks: [backend_network]
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}    # <-- Используем одну переменную для имени
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}    # <-- Используем одну переменную для пароля
-      RABBITMQ_DEFAULT_VHOST: core               # <-- Сразу создаем vhost 'core'
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_DEFAULT_VHOST: core
     volumes:
       - "rabbitmq_data:/var/lib/rabbitmq"
-      # Все монтирования файлов конфигурации удалены
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -75,6 +74,11 @@ services:
       LOG_LEVEL: ${LOG_LEVEL}
       RABBITMQ_DSN: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/core"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0"
+    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    command: >
+      sh -c "chown -R 1001:1001 /app/logs &&
+             gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 apps.gateway.gateway_main:app"
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     ports: ["8000:8000"]
     volumes:
       - "./logs/gateway:/app/logs"
@@ -85,7 +89,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 20s # Даем 20 секунд перед первой проверкой
+      start_period: 20s
     restart: always
 
   auth_svc:
@@ -103,9 +107,12 @@ services:
       DB_SCHEMA: "auth"
       JWT_SECRET: ${JWT_SECRET}
       ENV_TYPE: "pytest"
+    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
     command: >
-      sh -c "alembic -x schema=auth upgrade head &&
+      sh -c "chown -R 1001:1001 /app/logs &&
+             alembic -x schema=auth upgrade head &&
              gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001 apps.auth_svc.auth_svc_main:app"
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     ports: ["8001:8001"]
     volumes:
       - "./logs/auth:/app/logs"
@@ -117,6 +124,6 @@ services:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8001/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 12       # Увеличиваем число попыток
-      start_period: 20s # Даем 20с на миграции и запуск перед первой проверкой
+      retries: 12
+      start_period: 20s
     restart: always
