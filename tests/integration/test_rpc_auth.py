@@ -4,6 +4,7 @@ import pytest
 from libs.messaging.rabbitmq_names import Exchanges, Queues
 from tests.helpers import RpcClient
 
+
 @pytest.fixture(scope="class")
 async def rpc_client():
     amqp_url = os.getenv("RABBITMQ_DSN")
@@ -11,6 +12,7 @@ async def rpc_client():
     await client.connect()
     yield client
     await client.close()
+
 
 # РЕГИСТРАЦИЯ — даём имя зависимости
 @pytest.mark.dependency(name="register")
@@ -24,6 +26,7 @@ async def test_register_user_via_rpc(rpc_client: RpcClient, user_data):
     assert resp.get("success") is True, f"Ответ: {resp}"
     assert "account_id" in (resp.get("data") or {})
 
+
 # ВЫДАЧА ТОКЕНА — зависит от регистрации
 @pytest.mark.dependency(depends=["register"])
 @pytest.mark.anyio
@@ -36,6 +39,7 @@ async def test_issue_token_via_rpc(rpc_client: RpcClient, user_data):
     assert resp.get("success") is True, f"Ответ: {resp}"
     data = resp.get("data") or {}
     assert ("access_token" in data) or ("token" in data), f"Нет токена в data: {data}"
+
 
 # НЕВЕРНЫЙ ПАРОЛЬ — тоже зависит от регистрации
 @pytest.mark.dependency(depends=["register"])

@@ -2,6 +2,7 @@
 import uuid
 import pytest
 
+
 @pytest.fixture(scope="session")
 def user_data():
     u = uuid.uuid4().hex[:10]
@@ -11,9 +12,11 @@ def user_data():
         "password": "password123",
     }
 
+
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
+
 
 @pytest.fixture(scope="session")
 def gateway_api_url() -> str:
@@ -27,4 +30,3 @@ def auth_svc_health_url() -> str:
     """Возвращает URL для health-check сервиса Auth."""
     # Обращаемся к другому контейнеру по имени сервиса из docker-compose
     return "http://auth_svc:8001/health/ready"
-

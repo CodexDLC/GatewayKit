@@ -20,10 +20,12 @@ def redis_client():
     client.close()
 
 
-@pytest.mark.dependency(depends=["register"])  # Зависит от успешной регистрации из другого теста
+@pytest.mark.dependency(
+    depends=["register"]
+)  # Зависит от успешной регистрации из другого теста
 @pytest.mark.anyio
 async def test_rpc_login_succeeds_after_one_retry(
-        rpc_client: RpcClient, user_data, redis_client
+    rpc_client: RpcClient, user_data, redis_client
 ):
     """
     Проверяет, что RPC-вызов issue_token успешен после одной временной ошибки.
@@ -46,7 +48,7 @@ async def test_rpc_login_succeeds_after_one_retry(
         exchange_name=Exchanges.RPC,
         routing_key=Queues.AUTH_ISSUE_TOKEN_RPC,
         payload={"username": username, "password": password},
-        timeout=RETRY_AWAIT_SEC + 5.0  # Таймаут теста > задержки retry
+        timeout=RETRY_AWAIT_SEC + 5.0,  # Таймаут теста > задержки retry
     )
 
     print(f"[TEST] Получен ответ от RPC: {response}")

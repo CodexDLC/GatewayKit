@@ -7,6 +7,7 @@ from apps.gateway.rest.auth.dto import ApiLoginRequest, ApiRegisterRequest
 
 # --- Тесты для ApiLoginRequest ---
 
+
 def test_login_request_valid_data():
     """Проверяет, что валидные данные проходят проверку."""
     try:
@@ -29,6 +30,7 @@ def test_login_request_username_too_short():
 
 # --- Тесты для ApiRegisterRequest ---
 
+
 def test_register_request_valid_data():
     """Проверяет, что валидные данные для регистрации проходят проверку."""
     try:
@@ -38,8 +40,10 @@ def test_register_request_valid_data():
     except ValidationError:
         pytest.fail("Валидные данные не должны вызывать ошибку валидации.")
 
+
 # Примечание: Pydantic по умолчанию не валидирует email без установки email-validator.
 # В requirements.txt он есть, поэтому базовые проверки формата должны работать.
+
 
 def test_register_request_invalid_email():
     """Проверяет, что невалидный email вызывает ошибку."""

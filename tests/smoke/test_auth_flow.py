@@ -81,7 +81,6 @@ class TestAuthFlow:
         assert data["data"]["valid"] is True
         assert data["data"]["account_id"] == TestAuthFlow.account_id
 
-
     @pytest.mark.dependency(depends=["TestAuthFlow::test_register_new_user"])
     def test_validate_invalid_token_fails(self, gateway_api_url: str):
         """Тест валидации неверного/испорченного токена."""

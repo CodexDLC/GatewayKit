@@ -26,7 +26,6 @@ class ApiLoginResponse(BaseModel):
 
 
 class ApiRegisterRequest(BaseModel):
-
     email: EmailStr
     username: str
     password: str

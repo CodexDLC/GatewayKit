@@ -101,6 +101,7 @@ def test_validate_response_contract(gateway_api_url: str):
 
     # 2. Получаем токен из smoke-тестов и выполняем запрос
     from tests.smoke.test_auth_flow import TestAuthFlow
+
     token = TestAuthFlow.access_token
 
     headers = {"Authorization": f"Bearer {token}"}

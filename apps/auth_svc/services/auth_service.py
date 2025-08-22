@@ -97,7 +97,9 @@ class AuthService:
             fail_flag_key = f"test:fail_once:auth.issue_token:{dto.username}"
             if self.redis and await self.redis.exists(fail_flag_key):
                 log.warning(f"ТЕСТ: Имитируем временный сбой для {dto.username}")
-                await self.redis.delete(fail_flag_key) # Удаляем ключ, чтобы при retry все прошло успешно
+                await self.redis.delete(
+                    fail_flag_key
+                )  # Удаляем ключ, чтобы при retry все прошло успешно
                 raise ConnectionError("ТЕСТ: Имитация временного сбоя подключения к БД")
         # ====================================================================
         # ==== КОНЕЦ ИЗМЕНЕНИЙ ===============================================

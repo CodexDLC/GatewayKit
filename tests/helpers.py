@@ -33,7 +33,9 @@ class RpcClient:
         if fut and not fut.done():
             fut.set_result(message.body)
 
-    async def call(self, exchange_name: str, routing_key: str, payload: dict, timeout: float = 5.0):
+    async def call(
+        self, exchange_name: str, routing_key: str, payload: dict, timeout: float = 5.0
+    ):
         corr_id = str(uuid.uuid4())
         fut = asyncio.get_running_loop().create_future()
         self._futures[corr_id] = fut
