@@ -1,18 +1,23 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AuthRegisterResponse_v1",
-  "type": "object",
   "properties": {
     "account_id": {
+      "title": "Account Id",
       "type": "integer"
     },
     "email": {
-      "type": "string",
-      "format": "email"
+      "title": "Email",
+      "type": "string"
     },
     "username": {
+      "title": "Username",
       "type": "string"
     }
   },
-  "required": ["account_id", "email", "username"]
+  "required": [
+    "account_id",
+    "email",
+    "username"
+  ],
+  "title": "ApiRegisterResponse",
+  "type": "object"
 }

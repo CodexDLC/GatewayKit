@@ -1,5 +1,5 @@
 # -------- Builder --------
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.12.4-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential gcc \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -13,7 +13,7 @@ COPY apps/auth_svc/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # -------- Final --------
-FROM python:3.12-slim-bookworm
+FROM python:3.12.4-slim-bookworm AS builder
 WORKDIR /app
 
 # зависимости

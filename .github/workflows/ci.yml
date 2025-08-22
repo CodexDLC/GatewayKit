@@ -54,12 +54,38 @@ jobs:
       - name: Run mypy
         # Проверяем только наш код в libs и apps
         run: mypy libs apps
+  check-contracts:
+    name: Check API Contracts
+    runs-on: ubuntu-latest
+    needs: [ lint, type-check ] # Запускаем после базовых проверок
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r apps/auth_svc/requirements.txt
+          pip install -r apps/gateway/requirements.txt
+
+      - name: Generate schemas from models
+        run: python scripts/generate_schemas.py
+
+      - name: Check for schema differences
+        run: |
+          # Эта команда упадет, если сгенерированные схемы отличаются от тех, что в репозитории
+          git diff --exit-code --quiet libs/domain/schemas/
+          echo "✅ API contract schemas are up-to-date."
 
   # --- 3. Сборка Docker-образов ---
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [lint, type-check] # Запускается только если быстрые проверки прошли
+    needs: [check-contracts]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

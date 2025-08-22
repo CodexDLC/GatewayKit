@@ -1,5 +1,6 @@
 # apps/auth_svc/utils/password_manager.py
 import hashlib
+import os
 
 import bcrypt
 
@@ -10,8 +11,10 @@ class PasswordManager:
     @staticmethod
     def hash_password(password: str) -> str:
         """Hash пароль с использованием bcrypt."""
+        # Получаем rounds из ENV, по умолчанию 12
+        rounds = int(os.getenv("AUTH_PASSWORD_BCRYPT_ROUNDS", "12"))
         pwd_bytes = password.encode("utf-8")
-        salt = bcrypt.gensalt()
+        salt = bcrypt.gensalt(rounds=rounds)
         hashed_password = bcrypt.hashpw(pwd_bytes, salt)
         return hashed_password.decode("utf-8")
 

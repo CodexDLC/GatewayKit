@@ -1,26 +1,56 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AuthValidateResponse_v1",
-  "type": "object",
   "properties": {
     "valid": {
+      "title": "Valid",
       "type": "boolean"
     },
     "account_id": {
-      "type": ["integer", "null"]
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Account Id"
     },
     "client_id": {
-      "type": ["string", "null"]
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Client Id"
     },
     "scopes": {
-      "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "title": "Scopes",
+      "type": "array"
     },
     "exp": {
-      "type": ["integer", "null"]
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exp"
     }
   },
-  "required": ["valid", "account_id", "client_id", "scopes", "exp"]
+  "required": [
+    "valid"
+  ],
+  "title": "ApiValidateResponse",
+  "type": "object"
 }

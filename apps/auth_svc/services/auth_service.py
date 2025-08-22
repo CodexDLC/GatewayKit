@@ -69,6 +69,15 @@ class AuthService:
                 new_account = await repo.create_account(dto, hashed_password)
                 await session.commit()
 
+                log.info(
+                    "New account registered",
+                    extra={
+                        "audit": True,
+                        "event": "register",
+                        "account_id": new_account.id,
+                    },
+                )
+
                 return new_account, None
             except IntegrityError as e:
                 await session.rollback()
@@ -88,11 +97,6 @@ class AuthService:
         if not dto.username or not dto.password:
             return None, ErrorCode.AUTH_INVALID_CREDENTIALS
 
-        # ====================================================================
-        # ==== НАЧАЛО ИЗМЕНЕНИЙ: БЛОК ДЛЯ ИМИТАЦИИ СБОЯ В ТЕСТАХ ==========
-        # ====================================================================
-        # Этот блок кода предназначен ИСКЛЮЧИТЕЛЬНО для интеграционного теста
-        # на retry-механизм. В проде он никогда не будет активен.
         if "pytest" in os.environ.get("ENV_TYPE", ""):
             fail_flag_key = f"test:fail_once:auth.issue_token:{dto.username}"
             if self.redis and await self.redis.exists(fail_flag_key):
@@ -101,9 +105,6 @@ class AuthService:
                     fail_flag_key
                 )  # Удаляем ключ, чтобы при retry все прошло успешно
                 raise ConnectionError("ТЕСТ: Имитация временного сбоя подключения к БД")
-        # ====================================================================
-        # ==== КОНЕЦ ИЗМЕНЕНИЙ ===============================================
-        # ====================================================================
 
         # --- Шаг 1: Проверяем, не забанен ли пользователь ---
         ban_key = key_auth_ban(dto.username)

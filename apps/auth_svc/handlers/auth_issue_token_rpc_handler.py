@@ -11,7 +11,6 @@ class AuthIssueTokenRpcHandler:
 
     async def process(self, dto: IssueTokenRequest) -> RpcResponse:
         """Делегирует выпуск токена в AuthService."""
-        # TODO: Добавить account_id в ответ, когда сервис будет его возвращать
         token, error = await self.auth_service.issue_token(dto)
 
         if error:
