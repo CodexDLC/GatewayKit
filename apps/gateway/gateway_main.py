@@ -17,13 +17,12 @@ event_listener_factory = create_event_broadcast_listener_factory()
 app = create_service_app(
     service_name="gateway",
     container_factory=GatewayContainer.create,
-    # --- ДОБАВЛЯЕМ ПАРАМЕТР ---
     settings_class=GatewaySettings,
-    # ---------------------------
     topology_declarator=declare_gateway_topology,
     listener_factories=[event_listener_factory],
     include_rest_routers=ROUTERS_CONFIG,
 )
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,

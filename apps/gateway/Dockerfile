@@ -15,7 +15,7 @@ COPY apps/gateway/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Final Stage
-FROM python:3.12.4-slim-bookworm AS builder
+FROM python:3.12.4-slim-bookworm
 
 WORKDIR /app
 
