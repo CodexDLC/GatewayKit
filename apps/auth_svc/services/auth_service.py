@@ -19,6 +19,7 @@ from ..utils.jwt_manager import JwtManager
 
 # --- ИСПРАВЛЕННЫЙ ИМПОРТ ---
 from libs.utils.redis_keys import key_auth_failed_attempts, key_auth_ban
+from apps.auth_svc.config.settings_auth import AuthServiceSettings
 
 log = logging.getLogger(__name__)
 
@@ -41,17 +42,15 @@ class AuthService:
         jwt_manager: JwtManager,
         password_manager: PasswordManager,
         redis: CentralRedisClient,
+        settings: AuthServiceSettings,  # <--- Добавляем settings
     ):
         self.session_factory = session_factory
         self.jwt_manager = jwt_manager
         self.password_manager = password_manager
         self.redis = redis
-        self.access_token_expires = timedelta(
-            minutes=int(os.getenv("AUTH_ACCESS_TTL", "30"))
-        )
-        self.refresh_token_expires = timedelta(
-            days=int(os.getenv("AUTH_REFRESH_TTL", "14"))
-        )
+        # Используем значения из settings вместо os.getenv()
+        self.access_token_expires = timedelta(seconds=settings.AUTH_ACCESS_TTL)
+        self.refresh_token_expires = timedelta(seconds=settings.AUTH_REFRESH_TTL)
 
     async def register(
         self, dto: RegisterRequest
