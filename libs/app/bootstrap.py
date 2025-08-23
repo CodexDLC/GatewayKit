@@ -1,6 +1,7 @@
 # libs/app/bootstrap.py
 from __future__ import annotations
 import asyncio
+import inspect
 from contextlib import asynccontextmanager
 from typing import (
     Type,
@@ -47,9 +48,14 @@ async def service_lifespan(
     running_bg_tasks: list[asyncio.Task] = []
     try:
         settings = getattr(app.state, "settings", None)
-        container = (
-            await container_factory(settings) if settings else await container_factory()
-        )
+
+        # --- ИСПРАВЛЕНИЕ: Умное создание контейнера ---
+        sig = inspect.signature(container_factory)
+        if settings and "settings" in sig.parameters:
+            container = await container_factory(settings)
+        else:
+            container = await container_factory()
+        # --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
         app.state.container = container
         bus = container.bus
@@ -58,7 +64,6 @@ async def service_lifespan(
         await topology_declarator(bus)
         log.info("Топология RabbitMQ объявлена.")
 
-        # --- ВОССТАНОВЛЕННЫЙ БЛОК ---
         if listener_factories:
             listener_tasks = [factory(bus, container) for factory in listener_factories]
             listeners = await asyncio.gather(*listener_tasks)
@@ -67,7 +72,6 @@ async def service_lifespan(
             log.info(f"Запущено {len(listeners)} слушателей.")
         else:
             log.info("Слушатели не настроены для этого сервиса.")
-        # --- КОНЕЦ ВОССТАНОВЛЕННОГО БЛОКА ---
 
         if background_tasks:
             for task_factory in background_tasks:
