@@ -2,17 +2,25 @@
 from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Type, Callable, List, Optional, Awaitable, TypeVar, Coroutine, Any
+from typing import (
+    Type,
+    Callable,
+    List,
+    Optional,
+    Awaitable,
+    TypeVar,
+    Coroutine,
+    Any,
+)
 from fastapi import FastAPI
 from pydantic_settings import BaseSettings
 
 from .logging_middleware import LoggingMiddleware
 from libs.messaging.i_message_bus import IMessageBus
-from libs.app.health import create_readiness_router
-from libs.infra.db import check_db_connection
-
 from libs.messaging.base_listener import BaseMicroserviceListener
 from libs.utils.logging_setup import app_logger as log
+from libs.app.health import create_readiness_router
+from libs.infra.db import check_db_connection
 
 # Типы для фабрик
 ContainerT = TypeVar("ContainerT")
@@ -32,11 +40,11 @@ async def service_lifespan(
     background_tasks: List[BackgroundTask],
 ):
     """
-    Управляет жизненным циклом сервиса: DI, шина, слушатели.
+    Управляет жизненным циклом сервиса: DI, шина, слушатели и фоновые задачи.
     """
     log.info("Запуск сервиса...")
     listeners: list[BaseMicroserviceListener] = []
-    running_bg_tasks = []  # <-- Список для запущенных фоновых задач
+    running_bg_tasks: list[asyncio.Task] = []
     try:
         settings = getattr(app.state, "settings", None)
         container = (
@@ -50,14 +58,19 @@ async def service_lifespan(
         await topology_declarator(bus)
         log.info("Топология RabbitMQ объявлена.")
 
+        # --- ВОССТАНОВЛЕННЫЙ БЛОК ---
         if listener_factories:
-            # ... (код запуска слушателей без изменений) ...
+            listener_tasks = [factory(bus, container) for factory in listener_factories]
+            listeners = await asyncio.gather(*listener_tasks)
+            for listener in reversed(listeners):
+                await listener.start()
             log.info(f"Запущено {len(listeners)} слушателей.")
+        else:
+            log.info("Слушатели не настроены для этого сервиса.")
+        # --- КОНЕЦ ВОССТАНОВЛЕННОГО БЛОКА ---
 
-        # --- ИЗМЕНЕНИЕ 3: Запускаем фоновые задачи ---
         if background_tasks:
             for task_factory in background_tasks:
-                # Передаем в задачу настройки и контейнер, если они нужны
                 task = asyncio.create_task(task_factory(settings, container))
                 running_bg_tasks.append(task)
             log.info(f"Запущено {len(running_bg_tasks)} фоновых задач.")
@@ -69,7 +82,6 @@ async def service_lifespan(
         raise
     finally:
         log.info("Остановка сервиса...")
-        # --- ИЗМЕНЕНИЕ 4: Останавливаем фоновые задачи ---
         for task in running_bg_tasks:
             task.cancel()
         if running_bg_tasks:
@@ -119,41 +131,33 @@ def create_service_app(
 
     app.add_middleware(LoggingMiddleware)
 
-    # --- НАЧАЛО ИЗМЕНЕНИЙ: УМНЫЕ HEALTH CHECKS ---
     readiness_checks = []
 
-    # 1. Проверка RabbitMQ (обязательна для всех)
     async def rmq_check():
         is_ready = await app.state.container.bus.is_connected()
         return "rabbitmq", is_ready
 
     readiness_checks.append(rmq_check)
 
-    # 2. Проверка PostgreSQL
     async def db_check():
-        # Проверка будет вызвана только если у контейнера есть фабрика сессий
         if hasattr(app.state.container, "session_factory"):
             is_ready = await check_db_connection()
             return "postgres", is_ready
-        return None  # Сигнал, что проверка не нужна
+        return None
 
     readiness_checks.append(db_check)
 
-    # 3. Проверка Redis
     async def redis_check():
-        # Проверка будет вызвана только если у контейнера есть клиент Redis
         if hasattr(app.state.container, "redis") and app.state.container.redis:
             try:
                 is_ready = await app.state.container.redis.redis.ping()
                 return "redis", bool(is_ready)
             except Exception:
                 return "redis", False
-        return None  # Сигнал, что проверка не нужна
+        return None
 
     readiness_checks.append(redis_check)
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
-    # Фильтруем None значения перед передачей в роутер
     app.include_router(
         create_readiness_router(
             [check for check in readiness_checks if check is not None]
