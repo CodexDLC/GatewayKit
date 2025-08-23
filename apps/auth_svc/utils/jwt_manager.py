@@ -9,10 +9,17 @@ import jwt
 class JwtManager:
     """Утилита для создания и валидации JWT."""
 
-    def __init__(self, secret: str, algorithm: str = "HS256", issuer: str = "auth_svc"):
+    def __init__(
+        self,
+        secret: str,
+        algorithm: str = "HS256",
+        issuer: str = "auth_svc",
+        audience: str = "game-clients",
+    ):
         self.secret = secret
         self.algorithm = algorithm
         self.issuer = issuer
+        self.audience = audience
 
     def create_access_token(
         self, account_id: int, username: str, expires_delta: timedelta
@@ -27,7 +34,7 @@ class JwtManager:
             "iat": int(now.timestamp()),
             "exp": int(expire.timestamp()),
             "iss": self.issuer,
-            "aud": "game_clients",  # Аудитория
+            "aud": self.audience,
         }
         return jwt.encode(payload, self.secret, algorithm=self.algorithm)
 
