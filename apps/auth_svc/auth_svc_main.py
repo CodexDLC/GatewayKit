@@ -2,8 +2,9 @@
 from libs.app.bootstrap import create_service_app
 from libs.messaging.rabbitmq_topology import declare_auth_topology
 
-# --- ДОБАВЬТЕ ЭТОТ ИМПОРТ ---
+
 from libs.containers.auth_container import AuthContainer
+from apps.auth_svc.config.settings_auth import AuthServiceSettings
 
 # Фабрики слушателей
 from apps.auth_svc.listeners import (
@@ -16,6 +17,7 @@ from apps.auth_svc.listeners import (
 
 app = create_service_app(
     service_name="auth-svc",
+    settings_class=AuthServiceSettings,
     container_factory=AuthContainer.create,
     topology_declarator=declare_auth_topology,
     listener_factories=[

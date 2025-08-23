@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 import asyncio
-import os
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
@@ -22,6 +21,7 @@ from apps.auth_svc.handlers.auth_refresh_token_rpc_handler import (
     AuthRefreshTokenRpcHandler,
 )
 from apps.auth_svc.handlers.auth_logout_rpc_handler import AuthLogoutRpcHandler
+from apps.auth_svc.config.settings_auth import AuthServiceSettings
 
 
 @dataclass
@@ -39,41 +39,39 @@ class AuthContainer:
     logout_handler: AuthLogoutRpcHandler
 
     @classmethod
-    async def create(cls) -> "AuthContainer":
+    async def create(cls, settings: AuthServiceSettings) -> "AuthContainer":
         """Фабричный метод для асинхронной инициализации контейнера."""
 
         from libs.infra.db import SessionFactory
 
-        # --- 1. Загрузка зависимостей из ENV ---
-        amqp_url = os.getenv("RABBITMQ_DSN")
-        jwt_secret = os.getenv("JWT_SECRET")
-        redis_url = os.getenv("REDIS_URL")
-        redis_pwd = os.getenv("REDIS_PASSWORD")
-
-        if not amqp_url:
-            raise ValueError("RABBITMQ_DSN environment variable not set.")
-        if not jwt_secret:
-            raise ValueError("JWT_SECRET environment variable not set.")
-        if not redis_url:
-            raise ValueError("REDIS_URL environment variable not set.")
-
-        bus = RabbitMQMessageBus(amqp_url)
-        redis_client = CentralRedisClient(redis_url=redis_url, password=redis_pwd)
+        # --- 1. Используем готовые настройки вместо os.getenv() ---
+        bus = RabbitMQMessageBus(settings.RABBITMQ_DSN)
+        redis_client = CentralRedisClient(
+            redis_url=settings.REDIS_URL, password=settings.REDIS_PASSWORD
+        )
 
         await asyncio.gather(bus.connect(), redis_client.connect())
 
         password_manager = PasswordManager()
-        jwt_manager = JwtManager(secret=jwt_secret)
+        # Передаем настройки напрямую в JwtManager
+        jwt_manager = JwtManager(
+            secret=settings.JWT_SECRET,
+            issuer=settings.AUTH_JWT_ISS,
+            audience=settings.AUTH_JWT_AUD,
+        )
 
+        # Передаем настройки в AuthService
         auth_service = AuthService(
-            session_factory=SessionFactory,  # Убедитесь, что используется эта переменная
+            session_factory=SessionFactory,
             jwt_manager=jwt_manager,
             password_manager=password_manager,
             redis=redis_client,
+            settings=settings,  # <-- ПЕРЕДАЕМ ВЕСЬ ОБЪЕКТ
         )
 
+        # Передаем настройки в обработчики, которым они нужны
         issue_handler = AuthIssueTokenRpcHandler(auth_service=auth_service)
-        validate_handler = AuthValidateTokenRpcHandler(jwt_secret=jwt_secret)
+        validate_handler = AuthValidateTokenRpcHandler(settings=settings)
         register_handler = AuthRegisterRpcHandler(auth_service=auth_service)
         refresh_handler = AuthRefreshTokenRpcHandler(auth_service=auth_service)
         logout_handler = AuthLogoutRpcHandler(auth_service=auth_service)

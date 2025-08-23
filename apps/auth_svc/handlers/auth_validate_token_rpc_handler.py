@@ -4,6 +4,7 @@ import jwt  # PyJWT
 
 from apps.auth_svc.i_auth_handler import IAuthHandler
 from libs.domain.dto.auth import ValidateTokenRequest, ValidateTokenResponse
+from apps.auth_svc.config.settings_auth import AuthServiceSettings
 
 
 class AuthValidateTokenRpcHandler(IAuthHandler):
@@ -11,13 +12,12 @@ class AuthValidateTokenRpcHandler(IAuthHandler):
     Реализует валидацию JWT...
     """
 
-    # --- ИЗМЕНЕНИЕ 1: Добавляем jwt_aud в конструктор ---
     def __init__(
-        self, *, jwt_secret: str, jwt_alg: str = "HS256", jwt_aud: str = "game_clients"
-    ) -> None:
-        self._secret = jwt_secret
-        self._alg = jwt_alg
-        self._aud = jwt_aud  # Сохраняем аудиторию
+        self, settings: AuthServiceSettings
+    ) -> None:  # <--- Принимаем settings
+        self._secret = settings.JWT_SECRET
+        self._alg = "HS256"  # Алгоритм можно оставить здесь
+        self._aud = settings.AUTH_JWT_AUD
 
     async def process(self, dto: ValidateTokenRequest) -> ValidateTokenResponse:
         try:
