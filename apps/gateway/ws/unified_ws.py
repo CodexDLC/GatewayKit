@@ -1,6 +1,6 @@
 # apps/gateway/ws/unified_ws.py
 from __future__ import annotations
-
+import asyncio
 import uuid
 from typing import Optional
 
@@ -21,10 +21,11 @@ from libs.messaging.rabbitmq_names import Queues, Exchanges
 from libs.utils.logging_setup import app_logger as logger
 
 from apps.gateway.dependencies import (
-    get_message_bus,
-    get_client_connection_manager,
-    get_settings,
+    get_ws_message_bus,
+    get_ws_client_connection_manager,
+    get_ws_settings,
 )
+
 from apps.gateway.config.setting_gateway import GatewaySettings
 
 from libs.domain.dto.ws import WSHelloFrame, WSPongFrame
@@ -44,16 +45,17 @@ async def get_token_from_ws(
             if scheme.lower() == "bearer":
                 return value
         except ValueError:
-            pass
+            pass  # Игнорируем неверный формат заголовка
     if token:
         return token
 
+    # Если токен не найден нигде
     await websocket.close(
         code=status.WS_1008_POLICY_VIOLATION, reason="Token not provided"
     )
     raise WebSocketDisconnect(
         code=status.WS_1008_POLICY_VIOLATION, reason="Token not provided"
-    )
+    )  # ИЗМЕНЕНИЕ
 
 
 @router.websocket("/v1/connect")
@@ -61,10 +63,10 @@ async def unified_websocket_endpoint(
     websocket: WebSocket,
     token: str = Depends(get_token_from_ws),
     client_conn_manager: ClientConnectionManager = Depends(
-        get_client_connection_manager
+        get_ws_client_connection_manager
     ),
-    message_bus: IMessageBus = Depends(get_message_bus),
-    settings: GatewaySettings = Depends(get_settings),
+    message_bus: IMessageBus = Depends(get_ws_message_bus),
+    settings: GatewaySettings = Depends(get_ws_settings),
 ):
     await websocket.accept()
     client_addr = f"{getattr(websocket.client, 'host', '0.0.0.0')}:{getattr(websocket.client, 'port', '0')}"
@@ -72,7 +74,7 @@ async def unified_websocket_endpoint(
     conn_id: Optional[str] = None
 
     try:
-        # 1. Валидация токена через RPC (без изменений)
+        # 1. Валидация токена через RPC
         rpc_resp = await message_bus.call_rpc(
             exchange_name=Exchanges.RPC,
             routing_key=Queues.AUTH_VALIDATE_TOKEN_RPC,
@@ -90,7 +92,7 @@ async def unified_websocket_endpoint(
         account_id = int(rpc_resp["account_id"])
         conn_id = f"ws_{account_id}_{uuid.uuid4().hex[:8]}"
 
-        # 2. Регистрация соединения (без изменений)
+        # 2. Регистрация соединения
         await client_conn_manager.connect(
             websocket, client_id=conn_id, client_type="PLAYER"
         )
@@ -98,34 +100,38 @@ async def unified_websocket_endpoint(
             f"✅ WS connected: account_id={account_id}, conn_id={conn_id}, ip={client_addr}"
         )
 
-        # 3. Отправка HELLO (без изменений)
+        # 3. Отправка HELLO
         hello = WSHelloFrame(
             connection_id=conn_id,
             heartbeat_sec=settings.GATEWAY_WS_PING_INTERVAL,
             v=1,
-            request_id=str(uuid.uuid4()),
+            request_id=str(uuid.uuid4()),  # ИЗМЕНЕНИЕ
         )
         await websocket.send_text(hello.model_dump_json())
 
-        # --- ГЛАВНОЕ ИЗМЕНЕНИЕ ЗДЕСЬ ---
-        # 4. Основной цикл теперь без блокирующего таймаута
+        # 4. Основной цикл (пока просто держим соединение)
         while True:
-            # Просто ждем сообщение от клиента
-            raw_data = await websocket.receive_text()
-
-            # При любом сообщении обновляем время активности
-            if conn_id:
-                client_conn_manager.update_activity(conn_id)
-
+            # Ждем сообщение с таймаутом, чтобы реализовать idle disconnect
+            raw_data = await asyncio.wait_for(
+                websocket.receive_text(), timeout=settings.GATEWAY_WS_IDLE_TIMEOUT
+            )
             # В будущем здесь будет обработка входящих команд
+            # Пока просто отвечаем pong на ping для keep-alive
             if "ping" in raw_data:
                 await websocket.send_text(
                     WSPongFrame(v=1, request_id=str(uuid.uuid4())).model_dump_json()
-                )
+                )  # ИЗМЕНЕНИЕ
 
     except WebSocketDisconnect:
         logger.info(f"🔌 WS disconnect: account_id={account_id}, conn_id={conn_id}")
-    # Убираем обработку asyncio.TimeoutError, так как ее больше не будет
+    except asyncio.TimeoutError:
+        logger.warning(
+            f"🔌 WS idle timeout: account_id={account_id}, conn_id={conn_id}"
+        )
+        if websocket.client_state != WebSocketState.DISCONNECTED:
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Idle timeout"
+            )
     except Exception as e:
         logger.exception(
             f"WS error for account_id={account_id}, conn_id={conn_id}: {e}"
